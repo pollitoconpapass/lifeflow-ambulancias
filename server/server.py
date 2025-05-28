@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from utils.a_star import find_shortest_path
+from utils.neo4j_funcs import Neo4jController
 from utils.cars_licenses import sort_licenses, change_lanes
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -15,6 +15,7 @@ NEO4J_USER = os.getenv("NEO4J_USER")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 app = FastAPI()
+neo4j_admin = Neo4jController()
 
 
 @app.get("/change-lanes")
@@ -38,8 +39,7 @@ class LocationRequest(BaseModel):
 
 @app.post("/shortest-path")
 def shortest_path_endpoint(data: LocationRequest):
-    return find_shortest_path(
-        neo4j.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)),
+    return neo4j_admin.find_shortest_path(
         data.start_location,
         data.end_location
     )
