@@ -2,6 +2,7 @@ import os
 import neo4j
 import uvicorn
 from fastapi import FastAPI
+from pydantic import BaseModel
 from dotenv import load_dotenv
 from utils.a_star import find_shortest_path
 from utils.cars_licenses import sort_licenses, change_lanes
@@ -30,13 +31,19 @@ def change_lanes_endpoint(data: dict):
 
     return { "cars_in_front": list_cars_in_front, "driver_chosen": list_driver_chosen }
 
-@app.get("/shortest-path")
-def shortest_path_endpoint(data: dict):
-    start_location = data.get("start_location", "")
-    end_location = data.get("end_location", "")
-    
-    return find_shortest_path(neo4j.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)), start_location, end_location)
+
+class LocationRequest(BaseModel):
+    start_location: str
+    end_location: str
+
+@app.post("/shortest-path")
+def shortest_path_endpoint(data: LocationRequest):
+    return find_shortest_path(
+        neo4j.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)),
+        data.start_location,
+        data.end_location
+    )
     
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8082)
+    uvicorn.run("server:app", host="0.0.0.0", port=8082, reload=True)

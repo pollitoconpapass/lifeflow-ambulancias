@@ -11,7 +11,7 @@ def sort_licenses(path_document: str)-> list:
     return result
     
 
-def change_lanes(num_lane: int, cars_in_front: list)-> int:
+def change_lanes(num_lane: int, cars_in_front: list)-> tuple:
     max_index = -1
     max_score = -1
     max_driver = None
@@ -21,12 +21,7 @@ def change_lanes(num_lane: int, cars_in_front: list)-> int:
         if index >= min(num_lane, len(cars_in_front)):
             return -1
 
-        nivel = cars_in_front[index].get('nivel de conduccion', 0)
-
-        try:
-            nivel = float(nivel)
-        except ValueError:
-            return backtrack(index + 1)
+        nivel = cars_in_front[index]['nivel de conduccion']
 
         if nivel > max_score:
             max_score = nivel
@@ -38,7 +33,7 @@ def change_lanes(num_lane: int, cars_in_front: list)-> int:
         return backtrack(index + 1)
 
     result = backtrack(0)
-    if result == -1 and max_driver is not None:
+    if result == -1:
         return (max_index, max_driver['placa'], max_driver['dueño'], max_driver['nivel de conduccion'])
 
     return result

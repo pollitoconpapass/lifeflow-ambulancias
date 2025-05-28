@@ -1,3 +1,5 @@
+import math
+
 A_STAR_STEP_BY_STEP_CYPHER_QUERY = """ MATCH (start:Intersection {address: $start_address})
 WITH start LIMIT 1
 MATCH (end:Intersection {address: $end_address})    
@@ -45,11 +47,28 @@ RETURN
 ORDER BY paso;
 """
 
+def clean_nan(value):
+        if isinstance(value, float) and math.isnan(value):
+            return None
+        return value
+
 def find_shortest_path(driver, start_location, end_location):
     with driver.session() as session:
         result = session.run(A_STAR_STEP_BY_STEP_CYPHER_QUERY, 
                             start_address=start_location, 
                             end_address=end_location
-                            )
-        return result
-    
+        )
+        records = []
+        for record in result:
+            clean_record = {}
+            for key, value in record.items():
+                if value is not None:
+                    if hasattr(value, 'items'):
+                        clean_record[key] = {k: clean_nan(v) for k, v in value.items()}
+                    else:
+                        clean_record[key] = clean_nan(value)
+                else:
+                    clean_record[key] = None
+            records.append(clean_record)
+
+        return records
