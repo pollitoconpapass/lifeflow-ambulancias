@@ -2,6 +2,8 @@ import os
 import re
 import math
 import neo4j
+import json
+from pathlib import Path
 from rapidfuzz import fuzz
 from unidecode import unidecode
 from dotenv import load_dotenv
@@ -12,6 +14,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
 NEO4J_URI = os.getenv("NEO4J_URI")
 NEO4J_USER = os.getenv("NEO4J_USER")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+
+HOPSITALS_JSON_PATHS = Path(__file__).parent.parent.parent / "data" / "clinicas.json"
 
 
 A_STAR_STEP_BY_STEP_CYPHER_QUERY = """ MATCH (start:Intersection {address: $start_address})
@@ -47,6 +51,7 @@ RETURN
     nodes[i].address AS desde,
     nodes[i+1].address AS hasta,
     rels[i].name AS nombreCalle,
+    rels[i].osmid AS OSMID,
     rels[i].highway AS tipoCalle,
     CASE WHEN rels[i].oneway = true THEN 'Sí' ELSE 'No' END AS unidireccional,
     rels[i].length AS distancia_metros,
@@ -64,9 +69,15 @@ ORDER BY paso;
 class Neo4jController:
     def __init__(self):
         self.driver = neo4j.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        self.hospitals = json.loads(HOPSITALS_JSON_PATHS.read_text())
     
     def normalize_text(self, text):
         return unidecode(text.lower().strip())
+        
+    def clean_nan(self, value):
+        if isinstance(value, float) and math.isnan(value):
+            return None
+        return value
 
     def find_similar_address(self, address, limit=5, min_similarity=90):
         normalized_input = self.normalize_text(address)
@@ -208,7 +219,7 @@ class Neo4jController:
         matches = []
         
         partition_adjustments = {
-            'exact_number': -10,  # Más permisivo si coincide el número exacto
+            'exact_number': -5,  # Más permisivo si coincide el número exacto
             'number_range': -5,   # Ligeramente más permisivo
             'text_match': 0,      # Umbral normal
             'fallback': +5        # Más estricto para direcciones aleatorias
@@ -260,22 +271,28 @@ class Neo4jController:
                 })
         
         return matches
+        
+    def __init_case_sensitive(self):
+        self.case_insensitive_map = {
+            name.lower(): address for name, address in self.hospitals.items()
+        }
 
-
-    def clean_nan(self, value):
-        if isinstance(value, float) and math.isnan(value):
-            return None
-        return value
+    def get_address_from_hospital(self, hospital):
+        if not hasattr(self, 'case_insensitive_map'):
+            self.__init_case_sensitive()
+        return self.case_insensitive_map.get(hospital.lower())
 
     def find_shortest_path(self, start_location, end_location):
-        start_location_match = self.find_similar_address(start_location, limit=1)
-        end_location_match = self.find_similar_address(end_location, limit=1)
+        start_address = self.get_address_from_hospital(start_location)
+        end_address = self.get_address_from_hospital(end_location)
 
-        if not start_location_match or not end_location_match:
-            raise ValueError("Could not find matching addresses for the provided locations")
+        if start_address is None:
+            start_location_match = self.find_similar_address(start_location, limit=1)
+            start_address = start_location_match[0]["address"]
 
-        start_address = start_location_match[0]["address"]
-        end_address = end_location_match[0]["address"]
+        if end_address is None:
+            end_location_match = self.find_similar_address(end_location, limit=1)
+            end_address = end_location_match[0]["address"]
 
         print(f"Start location: {start_address}")
         print(f"End location: {end_address}")
