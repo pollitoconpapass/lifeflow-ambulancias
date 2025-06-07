@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 from utils.neo4j_funcs import Neo4jController
 from utils.cars_licenses import sort_licenses, change_lanes
 
@@ -17,6 +18,14 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 app = FastAPI()
 neo4j_admin = Neo4jController()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class LocationRequest(BaseModel):
     start_location: str

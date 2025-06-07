@@ -25,7 +25,7 @@ WITH start, end LIMIT 1
 
 // Calcular las coordenadas del destino para usar en la heurística
 WITH start, end, 
-     point.distance(start.location, end.location) AS straightLineDistance
+    point.distance(start.location, end.location) AS straightLineDistance
 
 // Buscar caminos usando shortestPath
 MATCH p = shortestPath((start)-[:ROAD_SEGMENT*]->(end))
@@ -33,7 +33,7 @@ WHERE all(r IN relationships(p) WHERE r.length IS NOT NULL)
 
 // Calcular distancia real total
 WITH p, start, end, straightLineDistance,
-     reduce(total = 0, r IN relationships(p) | total + r.length) AS actualDistance
+    reduce(total = 0, r IN relationships(p) | total + r.length) AS actualDistance
 
 // Ordenar primero por distancia (como haría A*)
 ORDER BY actualDistance ASC
@@ -44,14 +44,17 @@ UNWIND range(0, size(rels)-1) AS i
 
 // Calcular distancia en línea recta desde cada nodo al destino (heurística A*)
 WITH p, nodes, rels, i, actualDistance,
-     point.distance(nodes[i].location, nodes[size(nodes)-1].location) AS heuristicToDestination
+    point.distance(nodes[i].location, nodes[size(nodes)-1].location) AS heuristicToDestination
 
 RETURN 
     i + 1 AS paso,
     nodes[i].address AS desde,
     nodes[i+1].address AS hasta,
+    nodes[i].location.y AS fromLat,
+    nodes[i].location.x AS fromLng,
+    nodes[i+1].location.y AS toLat,
+    nodes[i+1].location.x AS toLng,
     rels[i].name AS nombreCalle,
-    rels[i].osmid AS OSMID,
     rels[i].highway AS tipoCalle,
     CASE WHEN rels[i].oneway = true THEN 'Sí' ELSE 'No' END AS unidireccional,
     rels[i].length AS distancia_metros,

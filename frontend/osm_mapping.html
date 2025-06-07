@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifeflow - Rutas Optimizadas</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .route-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .input-group {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-width: 120px;
+        }
+        
+        .stat-card h3 {
+            margin: 0;
+            font-size: 24px;
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .stat-card p {
+            margin: 5px 0 0 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+        
+        .route-info {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .step {
+            background: white;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .step-header {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .step-details {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .road-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .road-residential { background: #e3f2fd; color: #1976d2; }
+        .road-primary { background: #fff3e0; color: #f57c00; }
+        .road-secondary { background: #f3e5f5; color: #7b1fa2; }
+        .road-tertiary { background: #e8f5e8; color: #388e3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚑 Lifeflow 🚑</h1>
+            <p>Ruta mas corta hacia tu salud 🛣️❤️‍🩹</p>
+        </div>
+        
+        <div class="controls">
+            <div class="route-form">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="startLocation">📍 Ubicación de Inicio:</label>
+                        <input type="text" id="startLocation" placeholder="Ej: Avenida Camino Real 1101" 
+                               value="Avenida Camino Real 1101">
+                    </div>
+                    <div class="input-group">
+                        <label for="endLocation">🎯 Ubicación de Destino:</label>
+                        <input type="text" id="endLocation" placeholder="Ej: Instituto Medico Neoplasicas" 
+                               value="Instituto Medico Neoplasicas">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button onclick="calculateRoute()" id="calculateBtn">🧭 Calcular Ruta</button>
+                    <button onclick="clearRoute()">🗑️ Limpiar Mapa</button>
+                </div>
+            </div>
+            
+            <div class="stats" id="routeStats" style="display: none;">
+                <div class="stat-card">
+                    <h3 id="totalDistance">0</h3>
+                    <p>Distancia Total (m)</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalSteps">0</h3>
+                    <p>Pasos</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="estimatedTime">0</h3>
+                    <p>Tiempo Est. (min)</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="map"></div>
+        
+        <div class="route-info" id="routeInfo" style="display: none;">
+            <h3>📋 Instrucciones de Ruta</h3>
+            <div id="routeSteps"></div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script>
+        // Inicializar el mapa centrado en Lima
+        const map = L.map('map').setView([-12.0464, -77.0428], 13);
+        
+        // Agregar capa de mapa de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Variables globales
+        let currentRoute = null;
+        let routeMarkers = [];
+        
+        // Función para calcular ruta usando la API
+        async function calculateRoute() {
+            const startLocation = document.getElementById('startLocation').value.trim();
+            const endLocation = document.getElementById('endLocation').value.trim();
+            const apiEndpoint = "http://0.0.0.0:8082/shortest-path";
+            
+            // Validar inputs
+            if (!startLocation || !endLocation) {
+                showMessage('Por favor ingresa tanto la ubicación de inicio como la de destino.', 'error');
+                return;
+            }
+            
+            if (!apiEndpoint) {
+                showMessage('Por favor ingresa la URL del endpoint de la API.', 'error');
+                return;
+            }
+            
+            // Mostrar estado de carga
+            const calculateBtn = document.getElementById('calculateBtn');
+            const originalText = calculateBtn.textContent;
+            calculateBtn.textContent = '⏳ Calculando...';
+            calculateBtn.disabled = true;
+            
+            try {
+                // Hacer petición a la API
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        start_location: startLocation,
+                        end_location: endLocation
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
+                }
+                
+                const routeData = await response.json();
+                
+                if (!routeData || routeData.length === 0) {
+                    throw new Error('No se encontró una ruta válida entre las ubicaciones especificadas.');
+                }
+                
+                // Procesar y visualizar la ruta
+                const processedRoute = processApiRouteData(routeData);
+                visualizeRoute(processedRoute);
+                
+                showMessage(`✅ Ruta calculada exitosamente! ${routeData.length} pasos encontrados.`, 'success');
+                
+            } catch (error) {
+                console.error('Error al calcular la ruta:', error);
+                showMessage(`❌ Error al calcular la ruta: ${error.message}`, 'error');
+            } finally {
+                // Restaurar botón
+                calculateBtn.textContent = originalText;
+                calculateBtn.disabled = false;
+            }
+        }
+        
+        // Función para procesar datos de la API
+        function processApiRouteData(apiData) {
+            return apiData.map(step => ({
+                paso: step.paso,
+                desde: step.desde,
+                hasta: step.hasta,
+                nombreCalle: step.nombreCalle,
+                tipoCalle: step.tipoCalle,
+                unidireccional: step.unidireccional,
+                distancia_metros: step.distancia_metros,
+                velocidadMaxima_kmh: step.velocidadMaxima_kmh,
+                instruccion: step.instruccion,
+                osmid: step.OSMID,
+                // Convertir coordenadas de la API al formato de Leaflet [lat, lng]
+                fromCoords: [step.fromLat, step.fromLng],
+                toCoords: [step.toLat, step.toLng]
+            }));
+        }
+        
+        // Función para mostrar mensajes
+        function showMessage(message, type = 'info') {
+            // Remover mensajes anteriores
+            const existingMessages = document.querySelectorAll('.error-message, .success-message');
+            existingMessages.forEach(msg => msg.remove());
+            
+            // Crear nuevo mensaje
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            
+            // Insertar después de los controles
+            const controls = document.querySelector('.controls');
+            controls.appendChild(messageDiv);
+            
+            // Auto-remover después de 5 segundos
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+        
+        // Función para obtener color según tipo de calle
+        function getRoadColor(highway) {
+            const colors = {
+                'residential': '#3498db',
+                'primary': '#e74c3c',
+                'secondary': '#f39c12',
+                'tertiary': '#27ae60',
+                'trunk': '#9b59b6'
+            };
+            return colors[highway] || '#95a5a6';
+        }
+        
+        // Función para cargar y visualizar ruta
+        function visualizeRoute(routeData) {
+            clearRoute();
+            
+            if (!routeData || routeData.length === 0) return;
+            
+            const coordinates = [];
+            const steps = [];
+            let totalDistance = 0;
+            
+            // Procesar datos de ruta con coordenadas reales de Neo4j
+            routeData.forEach((step, index) => {
+                // Las coordenadas vienen directamente de Neo4j
+                const fromCoords = step.fromCoords;
+                const toCoords = step.toCoords;
+                
+                if (index === 0) {
+                    coordinates.push(fromCoords);
+                }
+                coordinates.push(toCoords);
+                
+                totalDistance += step.distancia_metros;
+                steps.push(step);
+            });
+            
+            // Crear polilínea de la ruta
+            currentRoute = L.polyline(coordinates, {
+                color: '#721ca3',
+                weight: 6,
+                opacity: 0.8,
+                smoothFactor: 1
+            }).addTo(map);
+            
+            // Agregar marcadores de inicio y fin
+            const startMarker = L.marker(coordinates[0], {
+                icon: L.divIcon({
+                    html: '👇',
+                    iconSize: [30, 30],
+                    className: 'start-marker'
+                })
+            }).addTo(map).bindPopup(`<b>Inicio:</b><br>${routeData[0].desde}`);
+            
+            const endMarker = L.marker(coordinates[coordinates.length - 1], {
+                icon: L.divIcon({
+                    html: '💎',
+                    iconSize: [30, 30],
+                    className: 'end-marker'
+                })
+            }).addTo(map).bindPopup(`<b>Destino:</b><br>${routeData[routeData.length - 1].hasta}`);
+            
+            routeMarkers.push(startMarker, endMarker);
+            
+            // Ajustar vista del mapa a la ruta
+            map.fitBounds(currentRoute.getBounds(), { padding: [20, 20] });
+            
+            // Mostrar estadísticas
+            updateStats(totalDistance, steps.length);
+            
+            // Mostrar instrucciones
+            displayRouteInstructions(steps);
+        }
+        
+        // Función para actualizar estadísticas
+        function updateStats(distance, stepCount) {
+            document.getElementById('totalDistance').textContent = Math.round(distance);
+            document.getElementById('totalSteps').textContent = stepCount;
+            document.getElementById('estimatedTime').textContent = Math.round(distance / 1000 * 3); // Estimación básica
+            document.getElementById('routeStats').style.display = 'flex';
+        }
+        
+        // Función para mostrar instrucciones de ruta
+        function displayRouteInstructions(steps) {
+            const stepsContainer = document.getElementById('routeSteps');
+            stepsContainer.innerHTML = '';
+            
+            steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step';
+                
+                const roadTypeClass = `road-${step.tipoCalle}`;
+                
+                stepDiv.innerHTML = `
+                    <div class="step-header">
+                        ${step.paso}. ${step.instruccion} ${step.nombreCalle}
+                        <span class="road-type ${roadTypeClass}">${step.tipoCalle}</span>
+                    </div>
+                    <div class="step-details">
+                        📍 Desde: ${step.desde}<br>
+                        📍 Hasta: ${step.hasta}<br>
+                        📏 Distancia: ${Math.round(step.distancia_metros)} metros
+                        ${step.velocidadMaxima_kmh ? ` | 🚗 Vel. máx: ${step.velocidadMaxima_kmh} km/h` : ''}
+                        ${step.unidireccional === 'Sí' ? ' | ⬆️ Unidireccional' : ''}
+                    </div>
+                `;
+                
+                stepsContainer.appendChild(stepDiv);
+            });
+            
+            document.getElementById('routeInfo').style.display = 'block';
+        }
+        
+        
+        
+        // Función para limpiar ruta
+        function clearRoute() {
+            if (currentRoute) {
+                map.removeLayer(currentRoute);
+                currentRoute = null;
+            }
+            
+            routeMarkers.forEach(marker => map.removeLayer(marker));
+            routeMarkers = [];
+            
+            document.getElementById('routeStats').style.display = 'none';
+            document.getElementById('routeInfo').style.display = 'none';
+        }
+        
+        // Función para procesar datos de Neo4j (para tu uso)
+        function processNeo4jRouteData(neo4jResults) {
+            return neo4jResults.map(record => ({
+                paso: record.paso,
+                desde: record.desde,
+                hasta: record.hasta,
+                nombreCalle: record.nombreCalle,
+                tipoCalle: record.tipoCalle,
+                unidireccional: record.unidireccional,
+                distancia_metros: record.distancia_metros,
+                velocidadMaxima_kmh: record.velocidadMaxima_kmh,
+                instruccion: record.instruccion,
+                osmid: record.OSMID
+            }));
+        }
+        
+        // Evento para manejar clicks en el mapa (opcional)
+        map.on('click', function(e) {
+            console.log('Coordenadas:', e.latlng.lat, e.latlng.lng);
+        });
+        
+        // Manejar Enter en los campos de input
+        document.getElementById('startLocation').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateRoute();
+            }
+        });
+        
+        document.getElementById('endLocation').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateRoute();
+            }
+        });
+        
+        // // Auto-completar común para Lima
+        // const commonLocations = [
+        //     'Avenida Camino Real 1101',
+        //     'Instituto Medico Neoplasicas',
+        //     'Plaza de Armas de Lima',
+        //     'Aeropuerto Jorge Chávez',
+        //     'Centro Comercial Jockey Plaza',
+        //     'Universidad Nacional Mayor de San Marcos',
+        //     'Hospital Nacional Dos de Mayo',
+        //     'Estadio Nacional del Perú'
+        // ];
+        
+        // function setupAutocomplete(inputId) {
+        //     const input = document.getElementById(inputId);
+            
+        //     input.addEventListener('input', function() {
+        //         const value = this.value.toLowerCase();
+        //         const matches = commonLocations.filter(loc => 
+        //             loc.toLowerCase().includes(value)
+        //         );
+        //         if (matches.length > 0 && value.length > 2) {
+        //             console.log('Sugerencias:', matches);
+        //         }
+        //     });
+        // }
+        
+        // setupAutocomplete('startLocation');
+        // setupAutocomplete('endLocation');
+    </script>
+</body>
+</html>
