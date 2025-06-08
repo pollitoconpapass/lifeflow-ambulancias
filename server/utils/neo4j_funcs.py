@@ -95,7 +95,7 @@ class Neo4jController:
         # Procesar particiones en paralelo si hay suficientes candidatos
         total_candidates = sum(len(addresses) for addresses in candidate_partitions.values())
         
-        if total_candidates > 500:  # Paralelizar solo si vale la pena
+        if total_candidates > 500:
             matches = self._process_partitions_parallel(
                 candidate_partitions, normalized_input, has_number, input_number, min_similarity
             )
@@ -105,11 +105,17 @@ class Neo4jController:
             )
         
         # Sort by score (highest first) and take top matches
-        matches.sort(key=lambda x: x["similarity_score"], reverse=True)
+        matches.sort(key=lambda x: (
+            -x["is_exact_match"],           # Exact matches first (negative for desc order)
+            -x["similarity_score"],         # Then by similarity score
+            -x["partition_priority"],       # Then by partition priority
+            x["address"]                    # Finally alphabetical for consistency
+        ))
         return matches[:limit]
 
     def _get_partitioned_candidates(self, normalized_input, input_number):
         partitions = {
+            'exact_match': [],
             'exact_number': [],
             'number_range': [],
             'text_match': [],
@@ -117,52 +123,62 @@ class Neo4jController:
         }
 
         with self.driver.session() as session:
-            # Partición 1: Coincidencia exacta de número (más prioritaria)
-            if input_number:
-                result = session.run("""
-                    MATCH (i:Intersection)
-                    WHERE i.address CONTAINS $number_str
-                    RETURN i.address as address
-                    LIMIT 300
-                """, number_str=str(input_number))
+            # Partición 0: Búsqueda exacta primero
+            result = session.run("""
+                MATCH (i:Intersection)
+                WHERE toLower(i.address) = $normalized_input
+                RETURN i.address as address
+                LIMIT 10
+            """, normalized_input=normalized_input)
+            partitions['exact_match'] = [record["address"] for record in result if record["address"]]
+            
+            if not partitions['exact_match']: # -> Solo buscar otras particiones si no hay coincidencia exacta
+                # Partición 1: Coincidencia exacta de número
+                if input_number:
+                    result = session.run("""
+                        MATCH (i:Intersection)
+                        WHERE i.address CONTAINS $number_str
+                        RETURN i.address as address
+                        LIMIT 300
+                    """, number_str=str(input_number))
                 partitions['exact_number'] = [record["address"] for record in result if record["address"]]
 
-            # Partición 2: Rango de números cercanos
-            if input_number:
-                target_num = int(input_number)
-                result = session.run("""
-                    MATCH (i:Intersection)
-                    WHERE i.address =~ '.*\\\\d+.*'
-                    WITH i, [x IN split(i.address, ' ') WHERE x =~ '\\\\d+' | toInteger(x)][0] as addr_num
-                    WHERE addr_num IS NOT NULL 
-                          AND abs(addr_num - $target_num) <= 100
-                          AND abs(addr_num - $target_num) > 0
-                    RETURN i.address as address
-                    LIMIT 800
-                """, target_num=target_num)
-                partitions['number_range'] = [record["address"] for record in result if record["address"]]
+                # Partición 2: Rango de números cercanos
+                if input_number:
+                    target_num = int(input_number)
+                    result = session.run("""
+                        MATCH (i:Intersection)
+                        WHERE i.address =~ '.*\\\\d+.*'
+                        WITH i, [x IN split(i.address, ' ') WHERE x =~ '\\\\d+' | toInteger(x)][0] as addr_num
+                        WHERE addr_num IS NOT NULL 
+                            AND abs(addr_num - $target_num) <= 100
+                            AND abs(addr_num - $target_num) > 0
+                        RETURN i.address as address
+                        LIMIT 800
+                    """, target_num=target_num)
+                    partitions['number_range'] = [record["address"] for record in result if record["address"]]
 
-            # Partición 3: Coincidencias de texto (primeras palabras)
-            first_words = normalized_input.split()[:2]
-            if len(first_words) >= 1:
-                result = session.run("""
-                    MATCH (i:Intersection)
-                    WHERE toLower(i.address) CONTAINS $first_word
-                    RETURN i.address as address
-                    LIMIT 1000
-                """, first_word=first_words[0])
-                partitions['text_match'] = [record["address"] for record in result if record["address"]]
+                # Partición 3: Coincidencias de texto (primeras palabras)
+                first_words = normalized_input.split()[:2]
+                if len(first_words) >= 1:
+                    result = session.run("""
+                        MATCH (i:Intersection)
+                        WHERE toLower(i.address) CONTAINS $first_word
+                        RETURN i.address as address
+                        LIMIT 1000
+                    """, first_word=first_words[0])
+                    partitions['text_match'] = [record["address"] for record in result if record["address"]]
 
-            # Partición 4: Fallback - muestra más grande si no hay suficientes candidatos
-            total_so_far = sum(len(addrs) for addrs in partitions.values())
-            if total_so_far < 200:
-                result = session.run("""
-                    MATCH (i:Intersection)
-                    RETURN i.address as address
-                    ORDER BY rand()
-                    LIMIT 2000
-                """)
-                partitions['fallback'] = [record["address"] for record in result if record["address"]]
+                # Partición 4: Fallback - muestra más grande si no hay suficientes candidatos
+                total_so_far = sum(len(addrs) for addrs in partitions.values())
+                if total_so_far < 200:
+                    result = session.run("""
+                        MATCH (i:Intersection)
+                        RETURN i.address as address
+                        ORDER BY rand()
+                        LIMIT 2000
+                    """)
+                    partitions['fallback'] = [record["address"] for record in result if record["address"]]
         
         return self._remove_duplicates_between_partitions(partitions)
 
@@ -222,10 +238,17 @@ class Neo4jController:
         matches = []
         
         partition_adjustments = {
-            'exact_number': -5,  # Más permisivo si coincide el número exacto
-            'number_range': -5,   # Ligeramente más permisivo
-            'text_match': 0,      # Umbral normal
-            'fallback': +5        # Más estricto para direcciones aleatorias
+            'exact_number': -5,
+            'number_range': -5,
+            'text_match': 0,
+            'fallback': +5
+        }
+
+        partition_priorities = {
+            'exact_number': 4,
+            'number_range': 3,
+            'text_match': 2,
+            'fallback': 1
         }
         
         adjusted_min_similarity = min_similarity + partition_adjustments.get(partition_name, 0)
@@ -236,9 +259,12 @@ class Neo4jController:
             
             normalized_db = self.normalize_text(db_address)
 
+            is_exact_match = normalized_input == normalized_db
+
             number_matches = True
             if has_number and input_number not in normalized_db:
                 number_matches = False
+
 
             if partition_name in ['exact_number', 'number_range']:
                 score = fuzz.token_sort_ratio(normalized_input, normalized_db)
@@ -261,8 +287,15 @@ class Neo4jController:
                 'text_match': 3,
                 'fallback': 0
             }
+
+            exact_match_boost = 50 if is_exact_match else 0
             
-            final_score = score + score_boost + partition_boost.get(partition_name, 0)
+            final_score = score + score_boost + partition_boost.get(partition_name, 0) + exact_match_boost
+
+            if is_exact_match:
+                final_score = max(final_score, 150)
+            else:
+                final_score = min(final_score, 100)
             
             if final_score >= adjusted_min_similarity:
                 matches.append({
@@ -270,7 +303,9 @@ class Neo4jController:
                     "similarity_score": min(final_score, 100),
                     "normalized_input": normalized_input,
                     "normalized_db": normalized_db,
-                    "partition": partition_name
+                    "partition": partition_name,
+                    "is_exact_match": is_exact_match,
+                    "partition_priority": partition_priorities.get(partition_name, 0)
                 })
         
         return matches
