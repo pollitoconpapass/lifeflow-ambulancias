@@ -39,8 +39,17 @@ Estara corriendo en `http://0.0.0.0:8082`
 
 
 ## 🌺 Frontend
+### Leaflet para mostrar la ruta en el mapa
+![alt text](imgs/leaflet_route.png)
+
+### Three JS para realizar la animación de la ruta y dinamica del proyecto
 TODO
 
+## Algoritmos Utilizados (Vistos en clase)
+- A*: Para obtener el camino mas corto
+- Backtracking: Para seleccionar al conductor con mejor nivel de conduccion
+- Divide y Vencerás: Para buscar direcciones similares a la proporcionada dentro de la base de datos
+- Hash Map: Para mapear las direcciones de los hospitales, el nombre del hospital con su respectiva direccion
 
 ## 🤓 Recursos adicionales
 - [Comandos CYPHER de Neo4j para la base de datos de LifeFlow 🚑](data/commands_neo4j.md)
