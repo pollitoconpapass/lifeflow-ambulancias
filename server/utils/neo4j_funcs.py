@@ -141,7 +141,7 @@ class Neo4jController:
                         RETURN i.address as address
                         LIMIT 300
                     """, number_str=str(input_number))
-                partitions['exact_number'] = [record["address"] for record in result if record["address"]]
+                    partitions['exact_number'] = [record["address"] for record in result if record["address"]]
 
                 # Partición 2: Rango de números cercanos
                 if input_number:
@@ -186,7 +186,7 @@ class Neo4jController:
         seen = set()
         cleaned_partitions = {}
         
-        priority_order = ['exact_number', 'number_range', 'text_match', 'fallback']
+        priority_order = ['exact_match', 'exact_number', 'number_range', 'text_match', 'fallback']
         
         for partition_name in priority_order:
             if partition_name in partitions:
@@ -238,6 +238,7 @@ class Neo4jController:
         matches = []
         
         partition_adjustments = {
+            'exact_match': 0,
             'exact_number': -5,
             'number_range': -5,
             'text_match': 0,
@@ -245,6 +246,7 @@ class Neo4jController:
         }
 
         partition_priorities = {
+            'exact_match': 5,
             'exact_number': 4,
             'number_range': 3,
             'text_match': 2,
