@@ -65,7 +65,14 @@ def shortest_path_just_roads(data: LocationRequest):
         data.end_location
     )
 
-    roads = list(dict.fromkeys([road["nombreCalle"] for road in result]))
+    # In case the name of the street is a list, we take the first element
+    def get_street_name(road):
+        name = road.get("nombreCalle")
+        if isinstance(name, list) and name:  
+            return name[0]
+        return name
+
+    roads = list({get_street_name(road) for road in result if get_street_name(road) is not None})
     return { "calles": roads }
 
 
