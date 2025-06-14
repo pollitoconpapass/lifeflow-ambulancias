@@ -17,55 +17,116 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 HOPSITALS_JSON_PATHS = Path(__file__).parent.parent.parent / "data" / "clinicas.json"
 
-
-A_STAR_STEP_BY_STEP_CYPHER_QUERY = """ MATCH (start:Intersection {address: $start_address})
+A_STAR_MULTIPARADAS = """MATCH (start:Intersection {address: $start_address})
 WITH start LIMIT 1
 MATCH (end:Intersection {address: $end_address})    
 WITH start, end LIMIT 1
 
-// Calcular las coordenadas del destino para usar en la heurística
+// Handle poolpoints - they should be passed as a list parameter
+// $poolpoints can be an empty list or contain 1-4 addresses
 WITH start, end, 
-    point.distance(start.location, end.location) AS straightLineDistance
+    CASE 
+        WHEN $poolpoints IS NULL OR size($poolpoints) = 0 THEN []
+        ELSE $poolpoints 
+    END AS poolpoint_addresses
 
-// Buscar caminos usando shortestPath
-MATCH p = shortestPath((start)-[:ROAD_SEGMENT*]->(end))
-WHERE all(r IN relationships(p) WHERE r.length IS NOT NULL)
+// Match poolpoint nodes if they exist
+OPTIONAL MATCH (p1:Intersection) WHERE p1.address = poolpoint_addresses[0]
+OPTIONAL MATCH (p2:Intersection) WHERE p2.address = poolpoint_addresses[1]
+OPTIONAL MATCH (p3:Intersection) WHERE p3.address = poolpoint_addresses[2]
+OPTIONAL MATCH (p4:Intersection) WHERE p4.address = poolpoint_addresses[3]
 
-// Calcular distancia real total
-WITH p, start, end, straightLineDistance,
-    reduce(total = 0, r IN relationships(p) | total + r.length) AS actualDistance
+WITH start, end, poolpoint_addresses,
+    CASE size(poolpoint_addresses)
+        WHEN 0 THEN [start, end]
+        WHEN 1 THEN [start, p1, end]
+        WHEN 2 THEN [start, p1, p2, end]
+        WHEN 3 THEN [start, p1, p2, p3, end]
+        WHEN 4 THEN [start, p1, p2, p3, p4, end]
+        ELSE [start, end]
+    END AS route_nodes
 
-// Ordenar primero por distancia (como haría A*)
-ORDER BY actualDistance ASC
-LIMIT 1
+// Ensure all poolpoints were found
+WHERE all(node IN route_nodes WHERE node IS NOT NULL)
 
-WITH p, nodes(p) AS nodes, relationships(p) AS rels, actualDistance
-UNWIND range(0, size(rels)-1) AS i
+// Calculate shortest paths between consecutive poolpoints
+WITH route_nodes,
+    range(0, size(route_nodes)-2) AS segment_indices
 
-// Calcular distancia en línea recta desde cada nodo al destino (heurística A*)
-WITH p, nodes, rels, i, actualDistance,
-    point.distance(nodes[i].location, nodes[size(nodes)-1].location) AS heuristicToDestination
+UNWIND segment_indices AS seg_idx
+WITH route_nodes, seg_idx,
+    route_nodes[seg_idx] AS segment_start,
+    route_nodes[seg_idx + 1] AS segment_end
+
+// Find shortest path for each segment
+MATCH segment_path = shortestPath((segment_start)-[:ROAD_SEGMENT*]->(segment_end))
+WHERE all(r IN relationships(segment_path) WHERE r.length IS NOT NULL)
+
+WITH route_nodes, seg_idx, segment_path,
+    nodes(segment_path) AS segment_nodes,
+    relationships(segment_path) AS segment_rels,
+    reduce(total = 0, r IN relationships(segment_path) | total + r.length) AS segment_distance
+
+// Collect all segments in order
+WITH route_nodes, 
+    collect({
+        segment_index: seg_idx,
+        nodes: segment_nodes,
+        relationships: segment_rels,
+        distance: segment_distance
+    }) AS segments
+
+// Calculate total distance
+WITH route_nodes, segments,
+    reduce(total_dist = 0, seg IN segments | total_dist + seg.distance) AS total_distance
+
+// Create step-by-step instructions
+UNWIND segments AS segment
+WITH route_nodes, segments, total_distance, segment
+ORDER BY segment.segment_index
+
+UNWIND range(0, size(segment.relationships)-1) AS rel_idx
+WITH route_nodes, segments, total_distance, segment, rel_idx,
+    segment.nodes[rel_idx] AS from_node,
+    segment.nodes[rel_idx + 1] AS to_node,
+    segment.relationships[rel_idx] AS road_rel,
+    segment.segment_index AS current_segment,
+    // Calculate cumulative step number across all segments - FIXED VERSION
+    reduce(prev_steps = 0, prev_seg IN segments | 
+        CASE WHEN prev_seg.segment_index < segment.segment_index 
+             THEN prev_steps + size(prev_seg.relationships) 
+             ELSE prev_steps 
+        END) + rel_idx + 1 AS global_step
+
+// Calculate heuristic distance to final destination
+WITH route_nodes, total_distance, global_step, from_node, to_node, road_rel, rel_idx,
+    point.distance(from_node.location, route_nodes[size(route_nodes)-1].location) AS heuristic_to_destination,
+    current_segment, segment
 
 RETURN 
-    i + 1 AS paso,
-    nodes[i].address AS desde,
-    nodes[i+1].address AS hasta,
-    nodes[i].location.y AS fromLat,
-    nodes[i].location.x AS fromLng,
-    nodes[i+1].location.y AS toLat,
-    nodes[i+1].location.x AS toLng,
-    rels[i].name AS nombreCalle,
-    rels[i].highway AS tipoCalle,
-    CASE WHEN rels[i].oneway = true THEN 'Sí' ELSE 'No' END AS unidireccional,
-    rels[i].length AS distancia_metros,
-    heuristicToDestination AS distanciaLineaRectaAlDestino,
-    rels[i].max_speed AS velocidadMaxima_kmh,
+    global_step AS paso,
+    from_node.address AS desde,
+    to_node.address AS hasta,
+    from_node.location.y AS fromLat,
+    from_node.location.x AS fromLng,
+    to_node.location.y AS toLat,
+    to_node.location.x AS toLng,
+    road_rel.name AS nombreCalle,
+    road_rel.highway AS tipoCalle,
+    CASE WHEN road_rel.oneway = true THEN 'Sí' ELSE 'No' END AS unidireccional,
+    road_rel.length AS distancia_metros,
+    heuristic_to_destination AS distanciaLineaRectaAlDestino,
+    road_rel.max_speed AS velocidadMaxima_kmh,
     CASE 
-        WHEN i = 0 THEN 'Inicio' 
-        WHEN i = size(rels)-1 THEN 'Destino' 
+        WHEN global_step = 1 THEN 'Inicio'
+        WHEN current_segment < size(route_nodes)-2 AND rel_idx = size(segment.relationships)-1 
+            THEN 'Parada en: ' + to_node.address
+        WHEN to_node = route_nodes[size(route_nodes)-1] THEN 'Destino final'
         ELSE 'Continuar por' 
     END AS instruccion,
-    CASE WHEN i = 0 THEN actualDistance ELSE null END AS distanciaTotal
+    CASE WHEN global_step = 1 THEN total_distance ELSE null END AS distanciaTotal,
+    current_segment + 1 AS segmento
+
 ORDER BY paso;
 """
 
@@ -322,7 +383,7 @@ class Neo4jController:
             self.__init_case_sensitive()
         return self.case_insensitive_map.get(hospital.lower())
 
-    def find_shortest_path(self, start_location, end_location):
+    def find_shortest_path(self, start_location, end_location, poolpoints=None):
         start_address = self.get_address_from_hospital(start_location)
         end_address = self.get_address_from_hospital(end_location)
 
@@ -334,14 +395,34 @@ class Neo4jController:
             end_location_match = self.find_similar_address(end_location, limit=1)
             end_address = end_location_match[0]["address"]
 
+        # Process poolpoints
+        poolpoint_addresses = []
+        if poolpoints:
+            # Limit to maximum 4 poolpoints
+            poolpoints = poolpoints[:4] if len(poolpoints) > 4 else poolpoints
+            
+            for poolpoint in poolpoints:
+                poolpoint_address = self.get_address_from_hospital(poolpoint)
+                
+                if poolpoint_address is None:
+                    poolpoint_match = self.find_similar_address(poolpoint, limit=1)
+                    poolpoint_address = poolpoint_match[0]["address"]
+                
+                poolpoint_addresses.append(poolpoint_address)
+
         print(f"Start location: {start_address}")
         print(f"End location: {end_address}")
         
+        if poolpoint_addresses:
+            print(f"poolpoints: {poolpoint_addresses}")
+        
         with self.driver.session() as session:
+            # Use the new multi-poolpoint query
             result = session.run(
-                A_STAR_STEP_BY_STEP_CYPHER_QUERY, 
+                A_STAR_MULTIPARADAS,
                 start_address=start_address, 
-                end_address=end_address
+                end_address=end_address,
+                poolpoints=poolpoint_addresses if poolpoint_addresses else []
             )
 
             # Consume all records at once
@@ -360,6 +441,5 @@ class Neo4jController:
                     else:
                         clean_record[key] = None
                 clean_records.append(clean_record)
-       
 
         return clean_records

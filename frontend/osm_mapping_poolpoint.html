@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifeflow - Rutas Optimizadas</title>
+    <link rel="icon" type="image/png" href="../imgs/lifeflow_logo.png">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .route-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .input-group {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-width: 120px;
+        }
+        
+        .stat-card h3 {
+            margin: 0;
+            font-size: 24px;
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .stat-card p {
+            margin: 5px 0 0 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+        
+        .route-info {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .step {
+            background: white;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .step-header {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .step-details {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .road-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .road-residential { background: #e3f2fd; color: #1976d2; }
+        .road-primary { background: #fff3e0; color: #f57c00; }
+        .road-secondary { background: #f3e5f5; color: #7b1fa2; }
+        .road-tertiary { background: #e8f5e8; color: #388e3c; }
+
+        .road-unpaved { background: #f5f5f5; color: #7f8c8d; }
+        
+        /* Estilos para waypoints */
+        .waypoint-row {
+            margin-top: 10px;
+            align-items: flex-end;
+        }
+        
+        .remove-waypoint {
+            background: #e74c3c !important;
+            padding: 10px 15px !important;
+            margin-left: 10px;
+        }
+        
+        .waypoint-marker {
+            z-index: 1000;
+        }
+        
+        .waypoint-marker .leaflet-marker-icon {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚑 Lifeflow 🚑</h1>
+            <p>Ruta mas corta hacia tu salud 🛣️❤️‍🩹</p>
+        </div>
+        
+        <div class="controls">
+            <div class="route-form">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="startLocation">Punto de partida</label>
+                        <input type="text" id="startLocation" placeholder="Ej: Av. Arequipa 1234, Lince" 
+                               value="Avenida Camino Real 1101">
+                    </div>
+                    <div class="input-group">
+                        <label for="endLocation">Destino</label>
+                        <input type="text" id="endLocation" placeholder="Ej: Av. Javier Prado 1000, San Isidro" 
+                               value="Instituto Medico Neoplasicas">
+                    </div>
+                </div>
+                
+                <!-- Waypoints Section -->
+                <div id="waypointsContainer">
+                    <!-- Waypoints will be added here -->
+                </div>
+                
+                <div class="button-group">
+                    <button type="button" id="addWaypointBtn">➕ Agregar Punto Intermedio</button>
+                    <button type="button" id="calculateBtn" onclick="calculateRoute()">Calcular Ruta</button>
+                    <button onclick="clearRoute()">🗑️ Limpiar Mapa</button>
+                </div>
+            </div>
+            
+            <div class="stats" id="routeStats" style="display: none;">
+                <div class="stat-card">
+                    <h3 id="totalDistance">0</h3>
+                    <p>Distancia Total (m)</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalSteps">0</h3>
+                    <p>Pasos</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="estimatedTime">0</h3>
+                    <p>Tiempo Est. (min)</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="map"></div>
+        
+        <div class="route-info" id="routeInfo" style="display: none;">
+            <h3>📋 Instrucciones de Ruta</h3>
+            <div id="routeSteps"></div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script src="js/apiMapPoolPoints.js"> </script>
+</body>
+</html>
