@@ -154,7 +154,7 @@ function visualizeRoute(routeData) {
     
     // Crear polilínea de la ruta
     currentRoute = L.polyline(coordinates, {
-        color: '#721ca3',
+        color: '#3182ce',
         weight: 6,
         opacity: 0.8,
         smoothFactor: 1
