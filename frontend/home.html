@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../imgs/lifeflow_favicon.png">
+    <title>Lifeflow - Inicio</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5dc;
+            color: #333333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 400px;
+            background: #2d3748;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(49, 130, 206, 0.5);
+        }
+
+        .container h1 {
+            margin: 0;
+            padding: 0;
+        }
+
+        .logo{
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto 15px;
+        }
+
+        .container p {
+            font-size: 0.9rem;
+            color: #9e9e9e;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #ffffff;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            background: #1e1e1e;
+            border: none;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .form-group input::placeholder {
+            color: #757575;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: #9e9e9e;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #3182ce, #1a365d);
+            border: none;
+            color: #ffffff; 
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            background: linear-gradient(135deg, #3182ce, #1a365d);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(49, 130, 206, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><img src="../imgs/lifeflow_main_logo.png" alt="Lifeflow Logo" class="logo"></h1>
+        <p style="color: #ffffffe3;">Encuentra la ruta mas corta hacia tu salud ❤️‍🩹🚑</p>
+        <form>
+            <div class="form-group">
+                <label for="startPoint">Punto de Partida:</label>
+                <input type="text" id="startPoint" >
+            </div>
+
+            <div class="form-group">
+                <label for="destination">Punto de Llegada:</label>
+                <input type="text" id="destination" >
+            </div>
+
+            <button type="button" class="button" onclick="startDrivingExperience()">Calcular Ruta</button>
+        </form>
+    </div>
+
+    <script>
+        function startDrivingExperience() {
+            const startPoint = document.getElementById('startPoint').value;
+            const destination = document.getElementById('destination').value;
+
+            if (!startPoint || !destination) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            // Save to localStorage and navigate to next page
+            localStorage.setItem('startPoint', startPoint);
+            localStorage.setItem('destination', destination);
+
+            window.location.href = "osm_mapping.html";
+        }
+    </script>
+</body>
+</html>
