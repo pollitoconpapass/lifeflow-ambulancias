@@ -1,0 +1,18 @@
+{
+  "name": "js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "animateRoute.js",
+  "scripts": {
+    "start": "parcel ./threejsAnimation.html",
+    "build": "parcel build ./threejsAnimation.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "three": "^0.177.0"
+  }
+}
