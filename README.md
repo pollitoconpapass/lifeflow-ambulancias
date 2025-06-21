@@ -43,7 +43,8 @@ Estara corriendo en `http://0.0.0.0:8082`
 ![alt text](imgs/leaflet_route.png)
 
 ### Three JS para realizar la animación de la ruta y dinamica del proyecto
-TODO
+Preview
+![alt text](imgs/animation_preview.png)
 
 ## Algoritmos Utilizados (Vistos en clase)
 - A*: Para obtener el camino mas corto

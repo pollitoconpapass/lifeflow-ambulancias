@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../imgs/lifeflow_favicon.png">
+    <title>Lifeflow - Animacion de Ruta</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        #speedometer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 120px;
+        }
+        .speed-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        .speed-limit {
+            font-size: 14px;
+            color: #ffaa00;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div><strong>Current Step:</strong> <span id="currentStep">1</span></div>
+            <div><strong>From:</strong> <span id="fromStreet">-</span></div>
+            <div><strong>To:</strong> <span id="toStreet">-</span></div>
+            <div><strong>Distance:</strong> <span id="distance">0</span>m</div>
+            <div><strong>Progress:</strong> <span id="progress">0</span>%</div>
+        </div>
+        
+        <div id="controls">
+            <div><strong>Controls:</strong></div>
+            <div>W/S - Accelerate/Brake</div>
+            <div>A/D - Steer Left/Right</div>
+            <div>Space - Handbrake</div>
+            <div>R - Reset Car</div>
+        </div>
+        
+        <div id="speedometer">
+            <div class="speed-display"><span id="speed">0</span> km/h</div>
+            <div class="speed-limit">Limit: <span id="speedLimit">-</span> km/h</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script src="./js/animations/utils/RouteConverter.js"></script>
+    <script src="./js/animations/utils/UIManager.js"></script>
+
+    <script src="./js/animations/core/InputManager.js"></script>
+    <script src="./js/animations/core/Scene.js"></script>
+    <script src="./js/animations/core/Game.js"></script>
+
+    <script src="./js/animations/environment/Buildings.js"></script>
+    <script src="./js/animations/environment/Lightning.js"></script>
+    
+    <script src="./js/animations/entities/Road.js"></script>
+    <script src="./js/animations/entities/Vehicles.js"></script>
+    
+    <script src="./js/animateRoute.js"></script>
+</body>
+</html>
