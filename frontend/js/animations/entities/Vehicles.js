@@ -8,7 +8,7 @@ class Vehicle {
         
         // Physics properties
         this.speed = 0;
-        this.maxSpeed = 6;
+        this.maxSpeed = 30;
         this.acceleration = 0;
         this.steering = 0;
         this.currentWaypointIndex = 0;
@@ -176,22 +176,25 @@ class Vehicle {
 
     handleInput(inputManager, waypoints) {
         // Acceleration
+        const forwardAccel = 0.1
+        const reverseAccel = -0.08
+
         if (inputManager.isKeyPressed('KeyW')) {
-            this.acceleration = Math.min(this.acceleration + 0.1, 5);
+            this.acceleration = forwardAccel;
         } else if (inputManager.isKeyPressed('KeyS')) {
-            this.acceleration = Math.max(this.acceleration - 0.1, -5);
+            this.acceleration = reverseAccel;
         } else {
-            this.acceleration *= 0.95;
+            this.acceleration = 0;
         }
         
         // Handbrake
         if (inputManager.isKeyPressed('Space')) {
-            this.acceleration *= 0.9;
+            this.acceleration = 0;
         }
         
         // Steering
-        const steeringStep = 0.003
-        const maxSteering = 0.02
+        const steeringStep = 0.005
+        const maxSteering = 0.01
         if (inputManager.isKeyPressed('KeyA')) {
             this.steering = Math.max(this.steering - steeringStep, -maxSteering);
         } else if (inputManager.isKeyPressed('KeyD')) {
@@ -214,7 +217,7 @@ class Vehicle {
     updatePhysics(inputManager) {
         // Update speed
         this.speed += this.acceleration;
-        this.speed = Math.max(-this.maxSpeed/2, Math.min(this.speed, this.maxSpeed));
+        this.speed = Math.max(-this.maxSpeed / 2, Math.min(this.speed, this.maxSpeed));
 
         if (inputManager.isKeyPressed('Space')) {
             if (this.speed > 0) {
@@ -225,10 +228,10 @@ class Vehicle {
         }
         
         // Apply steering
-        const effectiveSpeed = Math.min(this.speed, 2);
-        if (Math.abs(this.speed) > 0.1) {
-            this.mesh.rotation.y -= this.steering * (effectiveSpeed / this.maxSpeed)
-        }
+        const effectiveSpeed = Math.abs(this.speed);
+        const minSteer = 0.05; // Minimum steering multiplier
+        const speedSteerFactor = Math.max(effectiveSpeed / this.maxSpeed, minSteer); // Never below minSteer
+        this.mesh.rotation.y -= this.steering * speedSteerFactor;
         
         // Move forward
         const forward = new THREE.Vector3(0, 0, -1);
@@ -247,12 +250,7 @@ class Vehicle {
         if (distanceToTarget < 5) {
             this.currentWaypointIndex++;
             this.stepProgress = 0;
-            
-            // if (this.currentWaypointIndex < waypoints.length) {
-            //     const nextWaypoint = waypoints[this.currentWaypointIndex];
-            //     const direction = new THREE.Vector3().subVectors(nextWaypoint.to, nextWaypoint.from).normalize();
-            //     // this.mesh.lookAt(this.mesh.position.clone().add(direction));
-            // }
+
         } else {
             const totalDistance = currentWaypoint.from.distanceTo(currentWaypoint.to);
             const traveledDistance = this.mesh.position.distanceTo(currentWaypoint.from);

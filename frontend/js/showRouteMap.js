@@ -60,8 +60,34 @@ async function calculateRoute() {
         // Procesar y visualizar la ruta
         const processedRoute = processApiRouteData(routeData);
         visualizeRoute(processedRoute);
+
+        sessionStorage.setItem('routeData', JSON.stringify(processedRoute));
+        sessionStorage.setItem('originalRouteData', JSON.stringify(routeData));
+
+        const routeInfo = {
+            startLocation: startLocation,
+            endLocation: endLocation,
+            totalSteps: routeData.length,
+            timestamp: new Date().toISOString()
+        };
+        sessionStorage.setItem('routeInfo', JSON.stringify(routeInfo));
         
+        document.getElementById('view3D').addEventListener('click', () => {
+            // Verificar que los datos estén guardados antes de navegar
+            const savedData = sessionStorage.getItem('routeData');
+            if (savedData) {
+                console.log('✅ Datos de ruta guardados correctamente');
+                console.log('🚀 Navegando a simulación 3D...');
+                window.location.href = './threejsAnimation.html';
+            } else {
+                console.error('❌ Error: No se pudieron guardar los datos de ruta');
+                alert('Error al preparar la simulación 3D. Por favor intenta de nuevo.');
+            }
+        });
+
+               
         showMessage(`✅ Ruta calculada exitosamente! ${routeData.length} pasos encontrados.`, 'success');
+
         
     } catch (error) {
         console.error('Error al calcular la ruta:', error);
