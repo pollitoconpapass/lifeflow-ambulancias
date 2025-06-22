@@ -1,620 +1,247 @@
-const routeData = [
-    {
-        "paso": 1,
-        "desde": "Jirón Andrés Vesalio 101",
-        "hasta": "Jirón Leonhard Euler",
-        "fromLat": -12.1051572,
-        "fromLng": -77.0086219,
-        "toLat": -12.1045775,
-        "toLng": -77.0087583,
-        "nombreCalle": "Jirón Leonhard Euler",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 66.14368321944502,
-        "distanciaLineaRectaAlDestino": 2437.831043631213,
-        "velocidadMaxima_kmh": null,
-        "instruccion": "Inicio",
-        "distanciaTotal": 3600.1522368377427
-    },
-    {
-        "paso": 2,
-        "desde": "Jirón Leonhard Euler",
-        "hasta": "Jirón Leonhard Euler",
-        "fromLat": -12.1045775,
-        "fromLng": -77.0087583,
-        "toLat": -12.1041342,
-        "toLng": -77.0088549,
-        "nombreCalle": "Jirón Leonhard Euler",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 50.39924142506577,
-        "distanciaLineaRectaAlDestino": 2440.3213786705,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 3,
-        "desde": "Jirón Leonhard Euler",
-        "hasta": "Jirón Alberto Barajas",
-        "fromLat": -12.1041342,
-        "fromLng": -77.0088549,
-        "toLat": -12.1042634,
-        "toLng": -77.0094126,
-        "nombreCalle": "Jirón Alberto Barajas",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 62.31350825420868,
-        "distanciaLineaRectaAlDestino": 2444.2369181890726,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 4,
-        "desde": "Jirón Alberto Barajas",
-        "hasta": "Jirón Philipp Von Leonard",
-        "fromLat": -12.1042634,
-        "fromLng": -77.0094126,
-        "toLat": -12.1044155,
-        "toLng": -77.0101583,
-        "nombreCalle": "Jirón Alberto Barajas",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 82.81996272647575,
-        "distanciaLineaRectaAlDestino": 2381.989926749154,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 5,
-        "desde": "Jirón Philipp Von Leonard",
-        "hasta": "Jirón Philipp Von Leonard 322",
-        "fromLat": -12.1044155,
-        "fromLng": -77.0101583,
-        "toLat": -12.1051603,
-        "toLng": -77.0100027,
-        "nombreCalle": "Jirón Philipp Von Leonard",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 84.52828549840333,
-        "distanciaLineaRectaAlDestino": 2299.4560677614422,
-        "velocidadMaxima_kmh": "30",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 6,
-        "desde": "Jirón Philipp Von Leonard 322",
-        "hasta": "Calle Gilbert",
-        "fromLat": -12.1051603,
-        "fromLng": -77.0100027,
-        "toLat": -12.1053253,
-        "toLng": -77.0108037,
-        "nombreCalle": "Calle Gilbert",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 88.99845127253208,
-        "distanciaLineaRectaAlDestino": 2292.4286936050557,
-        "velocidadMaxima_kmh": "30",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 7,
-        "desde": "Calle Gilbert",
-        "hasta": "Avenida José Gálvez Barrenechea",
-        "fromLat": -12.1053253,
-        "fromLng": -77.0108037,
-        "toLat": -12.1036442,
-        "toLng": -77.0111526,
-        "nombreCalle": "Avenida José Gálvez Barrenechea",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 190.75830114478555,
-        "distanciaLineaRectaAlDestino": 2203.489823870698,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 8,
-        "desde": "Avenida José Gálvez Barrenechea",
-        "hasta": "Avenida José Gálvez Barrenechea",
-        "fromLat": -12.1036442,
-        "fromLng": -77.0111526,
-        "toLat": -12.1028441,
-        "toLng": -77.0113529,
-        "nombreCalle": "Avenida José Gálvez Barrenechea",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 91.59372688452413,
-        "distanciaLineaRectaAlDestino": 2224.715041653695,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 9,
-        "desde": "Avenida José Gálvez Barrenechea",
-        "hasta": "Avenida José Gálvez Barrenechea",
-        "fromLat": -12.1028441,
-        "fromLng": -77.0113529,
-        "toLat": -12.1029784,
-        "toLng": -77.0115159,
-        "nombreCalle": "Avenida Del Parque Sur",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 23.17490584105097,
-        "distanciaLineaRectaAlDestino": 2237.0287390315953,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 10,
-        "desde": "Avenida José Gálvez Barrenechea",
-        "hasta": "Calle 49",
-        "fromLat": -12.1029784,
-        "fromLng": -77.0115159,
-        "toLat": -12.1036159,
-        "toLng": -77.0130693,
-        "nombreCalle": "Avenida Del Parque Sur",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 186.5157260250502,
-        "distanciaLineaRectaAlDestino": 2214.9105104633536,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 11,
-        "desde": "Calle 49",
-        "hasta": "Avenida Guardia Civil",
-        "fromLat": -12.1036159,
-        "fromLng": -77.0130693,
-        "toLat": -12.1030018,
-        "toLng": -77.0147184,
-        "nombreCalle": "Avenida Del Parque Sur",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 194.7231383489352,
-        "distanciaLineaRectaAlDestino": 2031.5444221112843,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 12,
-        "desde": "Avenida Guardia Civil",
-        "hasta": "Avenida Guardia Civil",
-        "fromLat": -12.1030018,
-        "fromLng": -77.0147184,
-        "toLat": -12.1029313,
-        "toLng": -77.0148363,
-        "nombreCalle": "Avenida Del Parque Sur",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 15.02557147401227,
-        "distanciaLineaRectaAlDestino": 1896.2838363207,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 13,
-        "desde": "Avenida Guardia Civil",
-        "hasta": "Avenida Del Parque Sur",
-        "fromLat": -12.1029313,
-        "fromLng": -77.0148363,
-        "toLat": -12.1032649,
-        "toLng": -77.0150406,
-        "nombreCalle": "Avenida Guardia Civil",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 43.236523371916604,
-        "distanciaLineaRectaAlDestino": 1888.3238989722515,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 14,
-        "desde": "Avenida Del Parque Sur",
-        "hasta": "Avenida Guardia Civil 751",
-        "fromLat": -12.1032649,
-        "fromLng": -77.0150406,
-        "toLat": -12.1051536,
-        "toLng": -77.0160554,
-        "nombreCalle": "Avenida Guardia Civil",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 237.2322388346285,
-        "distanciaLineaRectaAlDestino": 1851.8775213614488,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 15,
-        "desde": "Avenida Guardia Civil 751",
-        "hasta": "Avenida Guardia Civil",
-        "fromLat": -12.1051536,
-        "fromLng": -77.0160554,
-        "toLat": -12.1057638,
-        "toLng": -77.0163825,
-        "nombreCalle": "Avenida Guardia Civil",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 76.60630671330166,
-        "distanciaLineaRectaAlDestino": 1666.1523778848177,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 16,
-        "desde": "Avenida Guardia Civil",
-        "hasta": "Avenida Guardia Civil",
-        "fromLat": -12.1057638,
-        "fromLng": -77.0163825,
-        "toLat": -12.1060141,
-        "toLng": -77.0165245,
-        "nombreCalle": "Avenida Guardia Civil",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 31.82729546054645,
-        "distanciaLineaRectaAlDestino": 1609.1398914380027,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 17,
-        "desde": "Avenida Guardia Civil",
-        "hasta": "Avenida Tomás Marsano 375",
-        "fromLat": -12.1060141,
-        "fromLng": -77.0165245,
-        "toLat": -12.1064632,
-        "toLng": -77.0167792,
-        "nombreCalle": "Avenida Guardia Civil",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 57.10162893462085,
-        "distanciaLineaRectaAlDestino": 1585.4267479784774,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 18,
-        "desde": "Avenida Tomás Marsano 375",
-        "hasta": "Avenida Tomás Marsano 751",
-        "fromLat": -12.1064632,
-        "fromLng": -77.0167792,
-        "toLat": -12.1063653,
-        "toLng": -77.0168758,
-        "nombreCalle": "Avenida Tomás Marsano",
-        "tipoCalle": "primary",
-        "unidireccional": "Sí",
-        "distancia_metros": 15.1264200391673,
-        "distanciaLineaRectaAlDestino": 1543.6239343335303,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 19,
-        "desde": "Avenida Tomás Marsano 751",
-        "hasta": "Avenida Domingo Orué",
-        "fromLat": -12.1063653,
-        "fromLng": -77.0168758,
-        "toLat": -12.1053473,
-        "toLng": -77.0177949,
-        "nombreCalle": "Avenida Tomás Marsano",
-        "tipoCalle": "primary",
-        "unidireccional": "Sí",
-        "distancia_metros": 150.99735649865332,
-        "distanciaLineaRectaAlDestino": 1536.8771308287169,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 20,
-        "desde": "Avenida Domingo Orué",
-        "hasta": "Avenida República de Panamá",
-        "fromLat": -12.1053473,
-        "fromLng": -77.0177949,
-        "toLat": -12.1044501,
-        "toLng": -77.0186066,
-        "nombreCalle": "Avenida Tomás Marsano",
-        "tipoCalle": "primary",
-        "unidireccional": "Sí",
-        "distancia_metros": 133.19759800012034,
-        "distanciaLineaRectaAlDestino": 1482.670669235033,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 21,
-        "desde": "Avenida República de Panamá",
-        "hasta": "Calle Los Negocios 391",
-        "fromLat": -12.1044501,
-        "fromLng": -77.0186066,
-        "toLat": -12.1043171,
-        "toLng": -77.0187361,
-        "nombreCalle": "Avenida Tomás Marsano",
-        "tipoCalle": "primary",
-        "unidireccional": "Sí",
-        "distancia_metros": 20.419317349516728,
-        "distanciaLineaRectaAlDestino": 1446.1947562729047,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 22,
-        "desde": "Calle Los Negocios 391",
-        "hasta": "Calle Las Tiendas",
-        "fromLat": -12.1043171,
-        "fromLng": -77.0187361,
-        "toLat": -12.1050846,
-        "toLng": -77.0208232,
-        "nombreCalle": "Calle Los Negocios",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 242.43319172313258,
-        "distanciaLineaRectaAlDestino": 1440.8848708035707,
-        "velocidadMaxima_kmh": "30",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 23,
-        "desde": "Calle Las Tiendas",
-        "hasta": "Calle Los Halcones",
-        "fromLat": -12.1050846,
-        "fromLng": -77.0208232,
-        "toLat": -12.1058757,
-        "toLng": -77.0229745,
-        "nombreCalle": "Calle Los Negocios",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 249.88955637522793,
-        "distanciaLineaRectaAlDestino": 1201.2466567077663,
-        "velocidadMaxima_kmh": "30",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 24,
-        "desde": "Calle Los Halcones",
-        "hasta": "Calle Los Halcones",
-        "fromLat": -12.1058757,
-        "fromLng": -77.0229745,
-        "toLat": -12.1072048,
-        "toLng": -77.0227997,
-        "nombreCalle": "Calle Los Halcones",
-        "tipoCalle": "residential",
-        "unidireccional": "No",
-        "distancia_metros": 149.00630109318163,
-        "distanciaLineaRectaAlDestino": 955.85857562306,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 25,
-        "desde": "Calle Los Halcones",
-        "hasta": "Avenida Domingo Orué",
-        "fromLat": -12.1072048,
-        "fromLng": -77.0227997,
-        "toLat": -12.107726,
-        "toLng": -77.0241871,
-        "nombreCalle": "Avenida Domingo Orué",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 161.5978492838796,
-        "distanciaLineaRectaAlDestino": 900.8041769126542,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 26,
-        "desde": "Avenida Domingo Orué",
-        "hasta": "Avenida Domingo Orué",
-        "fromLat": -12.107726,
-        "fromLng": -77.0241871,
-        "toLat": -12.1077567,
-        "toLng": -77.0242747,
-        "nombreCalle": "Avenida Domingo Orué",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 10.11731082194391,
-        "distanciaLineaRectaAlDestino": 739.4258081202277,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 27,
-        "desde": "Avenida Domingo Orué",
-        "hasta": "Avenida Domingo Orué 165",
-        "fromLat": -12.1077567,
-        "fromLng": -77.0242747,
-        "toLat": -12.1079856,
-        "toLng": -77.0249445,
-        "nombreCalle": "Avenida Domingo Orué",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 77.14165511355704,
-        "distanciaLineaRectaAlDestino": 729.348118914364,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 28,
-        "desde": "Avenida Domingo Orué 165",
-        "hasta": "Avenida Domingo Orué 165",
-        "fromLat": -12.1079856,
-        "fromLng": -77.0249445,
-        "toLat": -12.1082702,
-        "toLng": -77.02578,
-        "nombreCalle": "Avenida Domingo Orué",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 96.19140274855366,
-        "distanciaLineaRectaAlDestino": 652.6321147498392,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 29,
-        "desde": "Avenida Domingo Orué 165",
-        "hasta": "Avenida Paseo de la República",
-        "fromLat": -12.1082702,
-        "fromLng": -77.02578,
-        "toLat": -12.1084049,
-        "toLng": -77.026149,
-        "nombreCalle": "Avenida Domingo Orué",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 42.830706344459585,
-        "distanciaLineaRectaAlDestino": 557.1834677430297,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 30,
-        "desde": "Avenida Paseo de la República",
-        "hasta": "Avenida Domingo Orué",
-        "fromLat": -12.1084049,
-        "fromLng": -77.026149,
-        "toLat": -12.1087312,
-        "toLng": -77.02669,
-        "nombreCalle": "Avenida Domingo Orué",
-        "tipoCalle": "secondary",
-        "unidireccional": "Sí",
-        "distancia_metros": 69.36826468895424,
-        "distanciaLineaRectaAlDestino": 514.6571903194333,
-        "velocidadMaxima_kmh": "60",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 31,
-        "desde": "Avenida Domingo Orué",
-        "hasta": "Calle Carlos A. Salaverry",
-        "fromLat": -12.1087312,
-        "fromLng": -77.02669,
-        "toLat": -12.1092649,
-        "toLng": -77.0266245,
-        "nombreCalle": "Avenida Paseo de la República",
-        "tipoCalle": "primary",
-        "unidireccional": "Sí",
-        "distancia_metros": 59.77055403474088,
-        "distanciaLineaRectaAlDestino": 445.6313895918398,
-        "velocidadMaxima_kmh": "50",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 32,
-        "desde": "Calle Carlos A. Salaverry",
-        "hasta": "Calle Junín 464",
-        "fromLat": -12.1092649,
-        "fromLng": -77.0266245,
-        "toLat": -12.1103519,
-        "toLng": -77.0264915,
-        "nombreCalle": "Avenida Paseo de la República",
-        "tipoCalle": "primary",
-        "unidireccional": "Sí",
-        "distancia_metros": 121.73098812711092,
-        "distanciaLineaRectaAlDestino": 428.2235735702502,
-        "velocidadMaxima_kmh": "50",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 33,
-        "desde": "Calle Junín 464",
-        "hasta": "Calle Junín 355",
-        "fromLat": -12.1103519,
-        "fromLng": -77.0264915,
-        "toLat": -12.1103967,
-        "toLng": -77.0274342,
-        "nombreCalle": "Calle Junín",
-        "tipoCalle": "residential",
-        "unidireccional": "Sí",
-        "distancia_metros": 102.61177582119947,
-        "distanciaLineaRectaAlDestino": 417.7337741935727,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 34,
-        "desde": "Calle Junín 355",
-        "hasta": "Calle Tacna 225",
-        "fromLat": -12.1103967,
-        "fromLng": -77.0274342,
-        "toLat": -12.1104208,
-        "toLng": -77.0281956,
-        "nombreCalle": "Calle Junín",
-        "tipoCalle": "residential",
-        "unidireccional": "Sí",
-        "distancia_metros": 82.82323252413006,
-        "distanciaLineaRectaAlDestino": 315.0165563444808,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 35,
-        "desde": "Calle Tacna 225",
-        "hasta": "Calle Junín 199",
-        "fromLat": -12.1104208,
-        "fromLng": -77.0281956,
-        "toLat": -12.1104953,
-        "toLng": -77.029265,
-        "nombreCalle": "Calle Junín",
-        "tipoCalle": "residential",
-        "unidireccional": "Sí",
-        "distancia_metros": 116.5603795569069,
-        "distanciaLineaRectaAlDestino": 232.1575857901774,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Continuar por",
-        "distanciaTotal": null
-    },
-    {
-        "paso": 36,
-        "desde": "Calle Junín 199",
-        "hasta": "Avenida Arequipa 4545",
-        "fromLat": -12.1104953,
-        "fromLng": -77.029265,
-        "toLat": -12.1105781,
-        "toLng": -77.0303225,
-        "nombreCalle": "Calle Junín",
-        "tipoCalle": "residential",
-        "unidireccional": "Sí",
-        "distancia_metros": 115.33988126380446,
-        "distanciaLineaRectaAlDestino": 115.46897991886712,
-        "velocidadMaxima_kmh": "40",
-        "instruccion": "Destino",
-        "distanciaTotal": null
+// Función para cargar datos de ruta dinámicamente
+function loadRouteData() {
+    try {
+        // Intentar cargar desde sessionStorage (datos de la pantalla anterior)
+        const storedRouteData = sessionStorage.getItem('routeData');
+        
+        if (storedRouteData) {
+            console.log('✅ Cargando datos de ruta desde sessionStorage');
+            return JSON.parse(storedRouteData);
+        } else {
+            console.warn('⚠️ No se encontraron datos de ruta en sessionStorage');
+            
+            // Fallback: usar datos hardcodeados para desarrollo/testing
+            console.log('📝 Usando datos de ruta de fallback para testing');
+            return getFallbackRouteData();
+        }
+    } catch (error) {
+        console.error('❌ Error al cargar datos de ruta:', error);
+        
+        // En caso de error, usar datos de fallback
+        console.log('📝 Usando datos de ruta de fallback debido a error');
+        return getFallbackRouteData();
     }
-]
+}
 
-// Initialize the game
+// Función que convierte los datos del sessionStorage al formato esperado por el Game
+function convertSessionDataToGameFormat(sessionData) {
+    return sessionData.map(step => ({
+        paso: step.paso,
+        desde: step.desde,
+        hasta: step.hasta,
+        fromLat: step.fromCoords[0], // sessionStorage guarda como [lat, lng]
+        fromLng: step.fromCoords[1],
+        toLat: step.toCoords[0],
+        toLng: step.toCoords[1],
+        nombreCalle: step.nombreCalle,
+        tipoCalle: step.tipoCalle,
+        unidireccional: step.unidireccional,
+        distancia_metros: step.distancia_metros,
+        distanciaLineaRectaAlDestino: step.distanciaLineaRectaAlDestino || 0,
+        velocidadMaxima_kmh: step.velocidadMaxima_kmh,
+        instruccion: step.instruccion,
+        distanciaTotal: step.distanciaTotal || null
+    }));
+}
+
+// Datos de fallback para desarrollo/testing
+function getFallbackRouteData() {
+    return [
+        {
+            "paso": 1,
+            "desde": "Jirón Andrés Vesalio 101",
+            "hasta": "Avenida de las Artes Sur 760",
+            "fromLat": -12.1051572,
+            "fromLng": -77.0086219,
+            "toLat": -12.1051525,
+            "toLng": -77.0063033,
+            "nombreCalle": "Jirón Andrés Vesalio",
+            "tipoCalle": "residential",
+            "unidireccional": "Sí",
+            "distancia_metros": 252.0935918891389,
+            "distanciaLineaRectaAlDestino": 1307.5973306759172,
+            "velocidadMaxima_kmh": "40",
+            "instruccion": "Inicio",
+            "distanciaTotal": 1732.264164298411
+        },
+        {
+            "paso": 2,
+            "desde": "Avenida de las Artes Sur 760",
+            "hasta": "Jirón Gregorio Marañón 232",
+            "fromLat": -12.1051525,
+            "fromLng": -77.0063033,
+            "toLat": -12.1051551,
+            "toLng": -77.0056626,
+            "nombreCalle": "Jirón Andrés Vesalio",
+            "tipoCalle": "residential",
+            "unidireccional": "Sí",
+            "distancia_metros": 69.65916452068515,
+            "distanciaLineaRectaAlDestino": 1106.9573981269039,
+            "velocidadMaxima_kmh": "40",
+            "instruccion": "Continuar por",
+            "distanciaTotal": null
+        }
+    ];
+}
+
+// Función para mostrar información de debug
+function showRouteDebugInfo(routeData) {
+    console.log('🛣️ Información de la ruta cargada:');
+    console.log(`📍 Pasos totales: ${routeData.length}`);
+    console.log(`🏁 Inicio: ${routeData[0]?.desde}`);
+    console.log(`🎯 Destino: ${routeData[routeData.length - 1]?.hasta}`);
+    
+    const totalDistance = routeData.reduce((sum, step) => sum + (step.distancia_metros || 0), 0);
+    console.log(`📏 Distancia total: ${Math.round(totalDistance)} metros`);
+}
+
+// Función para validar datos de ruta
+function validateRouteData(routeData) {
+    if (!Array.isArray(routeData) || routeData.length === 0) {
+        throw new Error('Los datos de ruta están vacíos o no son válidos');
+    }
+    
+    // Validar que cada paso tenga las propiedades necesarias
+    for (let i = 0; i < routeData.length; i++) {
+        const step = routeData[i];
+        if (!step.fromLat || !step.fromLng || !step.toLat || !step.toLng) {
+            throw new Error(`Paso ${i + 1} no tiene coordenadas válidas`);
+        }
+    }
+    
+    return true;
+}
+
+// Función principal de inicialización
+function initializeGame() {
+    try {
+        // Cargar datos de ruta
+        let routeData = loadRouteData();
+        
+        // Si los datos vienen del sessionStorage, convertir al formato esperado
+        const storedData = sessionStorage.getItem('routeData');
+        if (storedData) {
+            const sessionData = JSON.parse(storedData);
+            routeData = convertSessionDataToGameFormat(sessionData);
+        }
+        
+        // Validar datos
+        validateRouteData(routeData);
+        
+        // Mostrar información de debug
+        showRouteDebugInfo(routeData);
+        
+        // Inicializar el juego con los datos cargados
+        const game = new Game(routeData);
+        console.log('🎮 Juego inicializado correctamente');
+        
+        return game;
+        
+    } catch (error) {
+        console.error('❌ Error al inicializar el juego:', error);
+        
+        // Mostrar mensaje de error al usuario
+        showErrorMessage(error.message);
+        
+        // Intentar cargar con datos de fallback como último recurso
+        try {
+            console.log('🔄 Intentando cargar con datos de fallback...');
+            const fallbackData = getFallbackRouteData();
+            const game = new Game(fallbackData);
+            console.log('✅ Juego inicializado con datos de fallback');
+            return game;
+        } catch (fallbackError) {
+            console.error('💥 Error crítico: No se pudo inicializar el juego:', fallbackError);
+            showCriticalErrorMessage();
+        }
+    }
+}
+
+// Función para mostrar mensajes de error al usuario
+function showErrorMessage(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 0, 0, 0.9);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        text-align: center;
+        font-family: Arial, sans-serif;
+    `;
+    errorDiv.innerHTML = `
+        <h3>⚠️ Error al cargar la ruta</h3>
+        <p>${message}</p>
+        <button onclick="window.history.back()" style="
+            background: white;
+            color: red;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        ">Volver atrás</button>
+    `;
+    document.body.appendChild(errorDiv);
+}
+
+// Función para mostrar error crítico
+function showCriticalErrorMessage() {
+    document.body.innerHTML = `
+        <div style="
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        ">
+            <div>
+                <h1>💥 Error Crítico</h1>
+                <p>No se pudo cargar la simulación 3D</p>
+                <button onclick="window.location.href='osm_mapping.html'" style="
+                    background: #3182ce;
+                    color: white;
+                    border: none;
+                    padding: 15px 30px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin: 10px;
+                ">Volver al Mapa</button>
+                <button onclick="window.location.href='home.html'" style="
+                    background: #666;
+                    color: white;
+                    border: none;
+                    padding: 15px 30px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin: 10px;
+                ">Inicio</button>
+            </div>
+        </div>
+    `;
+}
+
+// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    const game = new Game(routeData);
-    console.log(game);
+    console.log('🚀 Iniciando carga de simulación 3D...');
+    initializeGame();
 });
+
+// Función adicional para debug - puedes llamarla desde la consola
+window.debugRoute = function() {
+    const stored = sessionStorage.getItem('routeData');
+    if (stored) {
+        console.log('📊 Datos en sessionStorage:', JSON.parse(stored));
+    } else {
+        console.log('❌ No hay datos en sessionStorage');
+    }
+};

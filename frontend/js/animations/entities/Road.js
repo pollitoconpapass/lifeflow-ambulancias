@@ -19,7 +19,11 @@ class Road {
     createRoadSegment({ from, to }) {
         const distance = from.distanceTo(to);
         const roadGeometry = new THREE.PlaneGeometry(8, distance);
-        const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
+        const roadMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x444444,
+            side: THREE.DoubleSide
+        });
+        
         const roadSegment = new THREE.Mesh(roadGeometry, roadMaterial);
     
         const direction = new THREE.Vector3().subVectors(to, from).normalize();
@@ -27,6 +31,7 @@ class Road {
     
         roadSegment.position.copy(midPoint);
         roadSegment.rotation.x = -Math.PI / 2;
+        roadSegment.position.y = 0.05;
         roadSegment.rotation.z = Math.atan2(direction.x, direction.z);
         roadSegment.receiveShadow = true;
     
@@ -38,10 +43,11 @@ class Road {
 
     createRoadMarkings({ from, to }, midPoint, direction, distance) {
         const lineGeometry = new THREE.PlaneGeometry(0.2, distance);
-        const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+        const lineMaterial = new THREE.MeshBasicMaterial({ color: "#f4f409"});
         const centerLine = new THREE.Mesh(lineGeometry, lineMaterial);
+
         centerLine.position.copy(midPoint);
-        centerLine.position.y = 0.01;
+        centerLine.position.y = 0.06;
         centerLine.rotation.x = -Math.PI / 2;
         centerLine.rotation.z = Math.atan2(direction.x, direction.z);
         this.roadGroup.add(centerLine);

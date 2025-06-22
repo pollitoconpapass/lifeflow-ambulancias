@@ -44,7 +44,7 @@ Estara corriendo en `http://0.0.0.0:8082`
 
 ### Three JS para realizar la animación de la ruta y dinamica del proyecto
 Preview
-![alt text](imgs/animation_preview.png)
+![alt text](./imgs/threeJspreview.png)
 
 ## Algoritmos Utilizados (Vistos en clase)
 - A*: Para obtener el camino mas corto

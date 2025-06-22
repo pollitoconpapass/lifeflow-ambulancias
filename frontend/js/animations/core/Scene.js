@@ -9,6 +9,14 @@ class GameScene {
     init() {
         // Scene setup
         this.scene.background = new THREE.Color(0x87CEEB);
+
+        const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: "#38761d" });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
+        ground.receiveShadow = true;
+        this.scene.add(ground); 
         
         // Camera setup
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -22,9 +30,6 @@ class GameScene {
         
         // Setup lighting
         Lighting.setupLighting(this.scene);
-        
-        // Add buildings
-        Buildings.createBuildings(this.scene);
         
         // Handle window resize
         this.setupWindowResize();
