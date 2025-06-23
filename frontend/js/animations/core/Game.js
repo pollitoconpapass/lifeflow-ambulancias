@@ -37,6 +37,10 @@ class Game {
         Trees.createTreesAlongRoute(this.gameScene.scene, this.points);
         Banners.createBannersAlongRoute(this.gameScene.scene, this.points);
         Houses.createHousesAlongRoute(this.gameScene.scene, this.points);
+
+        // Placing the hospital at the end of the road
+        const endPosition = this.points[this.points.length - 1]
+        Hospital.createHospital(this.gameScene.scene, endPosition);
         
         // Start game loop
         this.animate();
