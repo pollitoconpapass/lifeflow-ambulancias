@@ -17,20 +17,11 @@ class Game {
         // Generate road
         this.road.generateRoad(this.points);
 
-        this.trafficVehicles = [];
-        const totalTraffic = 15;
-
-        for (let i = 0; i < totalTraffic; i++) {    
-            let type;
-            // Randomly pick type, e.g., 65% car, 20% truck, 15% bus
-            const r = Math.random();
-            if (r < 0.65) type = "car";
-            else if (r < 0.85) type = "truck";
-            else type = "bus";
-
-            this.trafficVehicles.push(new TrafficVehicle(this.gameScene.scene, this.points, { type }));
-        }
-
+        // Generate traffic
+        this.trafficManager = new TrafficManager(this.gameScene.scene, this.points);
+        const playerStartSegment = 0
+        this.trafficManager.populateInitialTraffic(playerStartSegment)
+       
         
         // Generate buildings
         Buildings.createBuildingsAlongRoute(this.gameScene.scene, this.points);
@@ -61,9 +52,8 @@ class Game {
         this.uiManager.updateUI(this.vehicle.currentWaypointIndex, this.vehicle.stepProgress, this.vehicle.speed);
         
         // Update traffic vehicles
-        this.trafficVehicles.forEach(vehicle => {
-            vehicle.update(deltaTime, this.trafficVehicles);
-        });
+        const playerSegment = this.vehicle.currentWaypointIndex || 0;
+        this.trafficManager.update(deltaTime, playerSegment)
 
         // Render scene
         this.gameScene.render();
