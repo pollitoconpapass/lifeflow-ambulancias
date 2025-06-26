@@ -1,4 +1,4 @@
-class Vehicle {
+class Ambulance {
     constructor(scene, startPosition) {
         this.scene = scene;
         this.mesh = this.createVehicleMesh();
