@@ -1,6 +1,6 @@
 class RouteConverter {
     static latLngToLocal(lat, lng, centerLat, centerLng) {
-        const scale = 100000000;
+        const scale = 100000;
         const x = (lng - centerLng) * scale;
         const z = -(lat - centerLat) * scale;
         return new THREE.Vector3(x, 0, z);
