@@ -12,7 +12,7 @@ class Game {
         
         // Create game objects
         this.road = new Road(this.gameScene.scene);
-        this.vehicle = new Vehicle(this.gameScene.scene, this.points[0]);
+        this.ambulance = new Ambulance(this.gameScene.scene, this.points[0]);
         
         // Generate road
         this.road.generateRoad(this.points);
@@ -43,16 +43,16 @@ class Game {
         const deltaTime = this.clock.getDelta();
         
         // Update game objects
-        this.vehicle.update(this.inputManager, this.waypoints);
+        this.ambulance.update(this.inputManager, this.waypoints);
         
         // Update camera
-        this.gameScene.updateCamera(this.vehicle);
+        this.gameScene.updateCamera(this.ambulance);
         
         // Update UI
-        this.uiManager.updateUI(this.vehicle.currentWaypointIndex, this.vehicle.stepProgress, this.vehicle.speed);
+        this.uiManager.updateUI(this.ambulance.currentWaypointIndex, this.ambulance.stepProgress, this.ambulance.speed);
         
         // Update traffic vehicles
-        const playerSegment = this.vehicle.currentWaypointIndex || 0;
+        const playerSegment = this.ambulance.currentWaypointIndex || 0;
         this.trafficManager.update(deltaTime, playerSegment)
 
         // Render scene
