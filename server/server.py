@@ -32,7 +32,7 @@ class LocationRequest(BaseModel):
     end_location: str
 
 
-@app.get("/change-lanes")
+@app.post("/change-lanes")
 def change_lanes_endpoint(data: dict):
     num_lanes = data.get("num_lanes", 2)
     cars_in_front = sort_licenses(DATA_PATH)
