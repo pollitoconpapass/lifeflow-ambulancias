@@ -64,6 +64,145 @@
             color: #ffaa00;
             margin-top: 5px;
         }
+
+        #completionModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        #completionContent {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+            transform: scale(0.8);
+            animation: popIn 0.6s ease-out forwards;
+            max-width: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #completionContent::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shine 2s infinite;
+        }
+
+        .completion-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: bounce 1s ease-in-out infinite alternate;
+        }
+
+        .completion-message {
+            font-size: 24px;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .completion-stats {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 18px;
+        }
+
+        .restart-button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+        }
+
+        .restart-button:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
+        }
+
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5) rotate(-5deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.05) rotate(2deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-10px); }
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        /* Efectos de partículas */
+        .celebration-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffff00;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-float 3s ease-out forwards;
+        }
+
+        @keyframes particle-float {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-200px) scale(0);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 
@@ -89,26 +228,157 @@
             <div class="speed-display"><span id="speed">0</span> km/h</div>
             <div class="speed-limit">Limit: <span id="speedLimit">-</span> km/h</div>
         </div>
+
+        <!-- Modal de finalización -->
+        <div id="completionModal">
+            <div id="completionContent">
+                <div class="completion-title">¡LLEGASTE!</div>
+                <div class="completion-message">🏥 Has llegado al destino exitosamente 🚑</div>
+                
+                <div class="completion-stats">
+                    <div class="stat-item">
+                        <span>⏱️ Tiempo total:</span>
+                        <span id="totalTime">--:--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>📍 Waypoints completados:</span>
+                        <span id="waypointsCompleted">-/-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>🏃 Velocidad promedio:</span>
+                        <span id="avgSpeed">-- km/h</span>
+                    </div>
+                </div>
+                
+                <button class="restart-button" onclick="restartRoute()">
+                    🔄 Reiniciar Ruta
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
+    <script>
+        let gameStartTime = Date.now();
+        let totalDistance = 0;
+        let speedSamples = [];
+        let gameInstance = null;
+
+        function showCompletionModal(stats) {
+            const modal = document.getElementById('completionModal');
+            const totalTime = Math.floor((Date.now() - gameStartTime) / 1000);
+            const minutes = Math.floor(totalTime / 60);
+            const seconds = totalTime % 60;
+            
+            document.getElementById('totalTime').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('waypointsCompleted').textContent = 
+                `${stats.waypointsCompleted}/${stats.totalWaypoints}`;
+            document.getElementById('avgSpeed').textContent = 
+                `${Math.round(stats.avgSpeed)} km/h`;
+            
+            modal.style.display = 'flex';
+
+            createCelebrationParticles();
+            playCompletionSound();
+        }
+
+        function createCelebrationParticles() {
+            const colors = ['#ffff00', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
+            
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'celebration-particle';
+                    particle.style.left = Math.random() * window.innerWidth + 'px';
+                    particle.style.top = window.innerHeight + 'px';
+                    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    particle.style.animationDelay = Math.random() * 2 + 's';
+                    
+                    document.body.appendChild(particle);
+                    
+                    // Remover partícula después de la animación
+                    setTimeout(() => {
+                        particle.remove();
+                    }, 3000);
+                }, i * 100);
+            }
+        }
+
+        function playCompletionSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            const notes = [523, 659, 784, 1047]; // Do, Mi, Sol, Do octava
+            let noteIndex = 0;
+            
+            function playNote() {
+                if (noteIndex < notes.length) {
+                    oscillator.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    noteIndex++;
+                    if (noteIndex < notes.length) {
+                        setTimeout(playNote, 200);
+                    }
+                }
+            }
+            
+            oscillator.start();
+            playNote();
+            oscillator.stop(audioContext.currentTime + 1);
+        }
+
+        function restartRoute() {
+            const modal = document.getElementById('completionModal');
+            modal.style.display = 'none';
+            gameStartTime = Date.now();
+            speedSamples = [];
+            
+            if (gameInstance && gameInstance.ambulance) {
+                gameInstance.ambulance.reset(gameInstance.points[0]);
+            }
+        }
+        function onRouteCompleted(ambulance, waypoints) {
+            const avgSpeed = speedSamples.length > 0 
+                ? speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length 
+                : 0;
+            
+            const stats = {
+                waypointsCompleted: waypoints.length,
+                totalWaypoints: waypoints.length,
+                avgSpeed: avgSpeed
+            };
+            
+            showCompletionModal(stats);
+        }
+
+        function recordSpeedSample(speed) {
+            speedSamples.push(Math.abs(speed));
+            if (speedSamples.length > 100) {
+                speedSamples.shift();
+            }
+        }
+    </script>
+    
     <script src="./js/animations/utils/RouteConverter.js"></script>
     <script src="./js/animations/utils/UIManager.js"></script>
-
     <script src="./js/animations/core/InputManager.js"></script>
     <script src="./js/animations/core/Scene.js"></script>
     <script src="./js/animations/core/Game.js"></script>
-
     <script src="./js/animations/environment/Buildings.js"></script>
     <script src="./js/animations/environment/Lightning.js"></script>
-    
     <script src="./js/animations/entities/TrafficManager.js"></script>
     <script src="./js/animations/entities/Road.js"></script>
     <script src="./js/animations/entities/Ambulance.js"></script>
     <script src="./js/animations/entities/TrafficCars.js"></script>
     <script src="./js/animations/environment/HospitalFinal.js"></script>
-    
     <script src="./js/animateRoute.js"></script>
 </body>
 </html>

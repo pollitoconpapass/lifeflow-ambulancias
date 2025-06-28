@@ -13,6 +13,8 @@ class Game {
         // Create game objects
         this.road = new Road(this.gameScene.scene);
         this.ambulance = new Ambulance(this.gameScene.scene, this.points[0]);
+
+        // this.ambulance.debugWaypoints(this.waypoints)
         
         // Generate road
         this.road.generateRoad(this.points);
@@ -32,6 +34,8 @@ class Game {
         // Placing the hospital at the end of the road
         const endPosition = this.points[this.points.length - 1]
         Hospital.createHospital(this.gameScene.scene, endPosition);
+
+        gameInstance = this
         
         // Start game loop
         this.animate();
@@ -44,6 +48,8 @@ class Game {
         
         // Update game objects
         this.ambulance.update(this.inputManager, this.waypoints);
+
+        recordSpeedSample(this.ambulance.speed)
         
         // Update camera
         this.gameScene.updateCamera(this.ambulance);
