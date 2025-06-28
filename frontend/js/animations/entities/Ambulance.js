@@ -19,6 +19,8 @@ class Ambulance {
         this.lightBlinkTimer = 0;
         this.lightBlinkSpeed = 0.5; // Controls blink frequency
         this.lightsOn = true;
+
+        this.routeCompleted = false
     }
 
     createVehicleMesh() {
@@ -241,20 +243,125 @@ class Ambulance {
     }
 
     followWaypoints(waypoints) {
-        if (this.currentWaypointIndex >= waypoints.length) return;
+        console.log(`Current waypoint index: ${this.currentWaypointIndex}, Total waypoints: ${waypoints.length}`);
+        console.log(`Ambulance position:`, this.mesh.position);
+        
+        if (this.currentWaypointIndex >= waypoints.length) {
+            console.log("🎉 ROUTE COMPLETED!");
+            if (!this.routeCompleted) {
+                this.routeCompleted = true;
+                console.log("Calling onRouteCompleted...");
+                if (typeof onRouteCompleted === 'function') {
+                    onRouteCompleted(this, waypoints);
+                } else {
+                    console.log("onRouteCompleted function not found");
+                }
+            }
+            return;
+        }
         
         const currentWaypoint = waypoints[this.currentWaypointIndex];
-        const targetPosition = currentWaypoint.to;
-        const distanceToTarget = this.mesh.position.distanceTo(targetPosition);
+        console.log(`Current waypoint:`, currentWaypoint);
         
-        if (distanceToTarget < 5) {
+        // Estrategia más inteligente para determinar el objetivo
+        let targetPosition = currentWaypoint.to;
+        let distanceToTarget = this.mesh.position.distanceTo(targetPosition);
+        
+        console.log(`Target position:`, targetPosition);
+        console.log(`Distance to target: ${distanceToTarget}`);
+        
+        // Si la distancia es demasiado grande, buscar el waypoint más cercano
+        if (distanceToTarget > 500) { // Si está a más de 500 unidades
+            console.log("🔍 Distance too large, searching for closest waypoint...");
+            
+            let closestWaypointIndex = this.currentWaypointIndex;
+            let closestDistance = distanceToTarget;
+            
+            // Buscar en los próximos 5 waypoints para encontrar el más cercano
+            for (let i = this.currentWaypointIndex; i < Math.min(this.currentWaypointIndex + 5, waypoints.length); i++) {
+                const distanceToFrom = this.mesh.position.distanceTo(waypoints[i].from);
+                const distanceToTo = this.mesh.position.distanceTo(waypoints[i].to);
+                
+                if (distanceToFrom < closestDistance) {
+                    closestDistance = distanceToFrom;
+                    closestWaypointIndex = i;
+                    targetPosition = waypoints[i].from;
+                }
+                
+                if (distanceToTo < closestDistance) {
+                    closestDistance = distanceToTo;
+                    closestWaypointIndex = i;
+                    targetPosition = waypoints[i].to;
+                }
+            }
+            
+            if (closestWaypointIndex !== this.currentWaypointIndex) {
+                console.log(`📍 Skipping to closer waypoint ${closestWaypointIndex} (was ${this.currentWaypointIndex})`);
+                this.currentWaypointIndex = closestWaypointIndex;
+                distanceToTarget = closestDistance;
+            }
+        }
+        
+        // Usar distancia adaptativa basada en la velocidad
+        let switchDistance = Math.max(15, Math.abs(this.speed) * 2); 
+        
+        // Si aún está muy lejos, usar una distancia más grande
+        if (distanceToTarget > 200) {
+            switchDistance = Math.max(switchDistance, 50);
+        }
+        
+        console.log(`Using switch distance: ${switchDistance}`);
+        
+        if (distanceToTarget < switchDistance) {
+            console.log(`✅ Reached waypoint ${this.currentWaypointIndex}! Moving to next...`);
             this.currentWaypointIndex++;
             this.stepProgress = 0;
-
+            
+            // Si llegamos al final, marcar como completado
+            if (this.currentWaypointIndex >= waypoints.length) {
+                console.log("🎯 Last waypoint reached!");
+                if (!this.routeCompleted) {
+                    this.routeCompleted = true;
+                    if (typeof onRouteCompleted === 'function') {
+                        onRouteCompleted(this, waypoints);
+                    }
+                }
+            }
         } else {
             const totalDistance = currentWaypoint.from.distanceTo(currentWaypoint.to);
-            const traveledDistance = this.mesh.position.distanceTo(currentWaypoint.from);
-            this.stepProgress = Math.min(100, (traveledDistance / totalDistance) * 100);
+            let traveledDistance;
+            
+            // Si el total distance es muy pequeño o 0, usar distancia al objetivo
+            if (totalDistance < 1) {
+                const maxDistance = 100; // Asumir 100 unidades como máximo
+                traveledDistance = Math.max(0, maxDistance - distanceToTarget);
+                this.stepProgress = Math.min(100, (traveledDistance / maxDistance) * 100);
+            } else {
+                traveledDistance = this.mesh.position.distanceTo(currentWaypoint.from);
+                this.stepProgress = Math.min(100, (traveledDistance / totalDistance) * 100);
+            }
+            
+            console.log(`Progress: ${this.stepProgress.toFixed(1)}%`);
+        }
+    }
+
+    debugWaypoints(waypoints) {
+        for (let i = 0; i < Math.min(5, waypoints.length); i++) {
+            const wp = waypoints[i];
+            console.log(`Waypoint ${i}:`, {
+                from: `(${wp.from.x.toFixed(1)}, ${wp.from.z.toFixed(1)})`,
+                to: `(${wp.to.x.toFixed(1)}, ${wp.to.z.toFixed(1)})`,
+                distance: wp.from.distanceTo(wp.to).toFixed(1),
+                street: wp.streetName
+            });
+        }
+        
+        // Verificar conectividad
+        for (let i = 0; i < waypoints.length - 1; i++) {
+            const gap = waypoints[i].to.distanceTo(waypoints[i + 1].from);
+            if (gap > 1) {
+                console.warn(`⚠️ Gap detected between waypoint ${i} and ${i + 1}: ${gap.toFixed(1)} units`);
+            }
         }
     }
 
@@ -267,5 +374,6 @@ class Ambulance {
         this.currentWaypointIndex = 0;
         this.stepProgress = 0;
         this.lightBlinkTimer = 0;
+        this.routeCompleted = false
     }
 }
