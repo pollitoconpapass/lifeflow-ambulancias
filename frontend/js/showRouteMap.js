@@ -51,7 +51,9 @@ async function calculateRoute() {
             throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
         }
         
-        const routeData = await response.json();
+        const data = await response.json();
+        const routeData = data["ruta"];
+        const totalTime = data["tiempo_estimado"];
         
         if (!routeData || routeData.length === 0) {
             throw new Error('No se encontró una ruta válida entre las ubicaciones especificadas.');
@@ -59,7 +61,7 @@ async function calculateRoute() {
         
         // Procesar y visualizar la ruta
         const processedRoute = processApiRouteData(routeData);
-        visualizeRoute(processedRoute);
+        visualizeRoute(processedRoute, totalTime);
 
         sessionStorage.setItem('routeData', JSON.stringify(processedRoute));
         sessionStorage.setItem('originalRouteData', JSON.stringify(routeData));
@@ -154,7 +156,7 @@ function getRoadColor(highway) {
 }
 
 // Función para cargar y visualizar ruta
-function visualizeRoute(routeData) {
+function visualizeRoute(routeData, totalTime) {
     clearRoute();
     
     if (!routeData || routeData.length === 0) return;
@@ -209,17 +211,17 @@ function visualizeRoute(routeData) {
     map.fitBounds(currentRoute.getBounds(), { padding: [20, 20] });
     
     // Mostrar estadísticas
-    updateStats(totalDistance, steps.length);
+    updateStats(totalDistance, steps.length, totalTime);
     
     // Mostrar instrucciones
     displayRouteInstructions(steps);
 }
 
 // Función para actualizar estadísticas
-function updateStats(distance, stepCount) {
+function updateStats(distance, stepCount, totalTime) {
     document.getElementById('totalDistance').textContent = Math.round(distance);
     document.getElementById('totalSteps').textContent = stepCount;
-    document.getElementById('estimatedTime').textContent = Math.round(distance / 1000 * 3); // Estimación básica
+    document.getElementById('estimatedTime').textContent = totalTime;
     document.getElementById('routeStats').style.display = 'flex';
 }
 

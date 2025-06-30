@@ -7,6 +7,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 from unidecode import unidecode
 from dotenv import load_dotenv
+from .trafficDetails import calculate_approx_time
 from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
@@ -16,6 +17,131 @@ NEO4J_USER = os.getenv("NEO4J_USER")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 HOPSITALS_JSON_PATHS = Path(__file__).parent.parent.parent / "data" / "clinicas.json"
+
+
+BELLMAN_FORD_STEP_BY_STEP_CYPHER_QUERY = """
+MATCH (start:Intersection {address: $start_address})
+WITH start LIMIT 1
+MATCH (end:Intersection {address: $end_address})    
+WITH start, end LIMIT 1
+
+// Define traffic multipliers based on time and road type
+WITH start, end, 
+    $current_hour as hour, 
+    $day_type as dayType,
+    CASE 
+        WHEN $day_type = 'weekday' AND $current_hour IN [7, 8, 9] THEN 1.8        // Morning rush
+        WHEN $day_type = 'weekday' AND $current_hour IN [17, 18, 19] THEN 2.0     // Evening rush  
+        WHEN $day_type = 'weekday' AND $current_hour IN [10,11,12,13,14,15,16] THEN 1.2  // Midday
+        WHEN $day_type = 'weekday' THEN 0.9                              // Low traffic hours
+        WHEN $day_type = 'weekend' AND $current_hour IN [10,11,12,13,14,15,16] THEN 1.3  // Weekend moderate
+        ELSE 0.8                                                       // Weekend low traffic
+    END as timeMultiplier,
+    {primary: 2.0, secondary: 1.5, residential: 0.8, tertiary: 1.2, trunk: 2.2, motorway: 1.8} as roadTypeMultipliers
+
+// Find multiple path options using different strategies
+// Strategy 1: Residential roads only
+OPTIONAL MATCH p1 = shortestPath((start)-[:ROAD_SEGMENT*]-(end))
+WHERE all(r IN relationships(p1) WHERE r.length IS NOT NULL AND r.highway = 'residential')
+
+// Strategy 2: Residential and secondary roads
+OPTIONAL MATCH p2 = shortestPath((start)-[:ROAD_SEGMENT*]-(end))
+WHERE all(r IN relationships(p2) WHERE r.length IS NOT NULL AND r.highway IN ['residential', 'secondary'])
+
+// Strategy 3: All roads (shortest distance)
+OPTIONAL MATCH p3 = shortestPath((start)-[:ROAD_SEGMENT*]-(end))
+WHERE all(r IN relationships(p3) WHERE r.length IS NOT NULL)
+
+// Strategy 4: Avoid high-traffic roads during rush hours
+OPTIONAL MATCH p4 = shortestPath((start)-[:ROAD_SEGMENT*]-(end))
+WHERE all(r IN relationships(p4) WHERE 
+    r.length IS NOT NULL AND 
+    NOT (r.highway IN ['trunk', 'primary', 'motorway'] AND timeMultiplier > 1.5)
+)
+
+// Calculate actual distances for each path
+WITH p1, p2, p3, p4, timeMultiplier, roadTypeMultipliers,
+    CASE WHEN p1 IS NOT NULL THEN reduce(d = 0, r IN relationships(p1) | d + r.length) ELSE null END AS d1,
+    CASE WHEN p2 IS NOT NULL THEN reduce(d = 0, r IN relationships(p2) | d + r.length) ELSE null END AS d2,
+    CASE WHEN p3 IS NOT NULL THEN reduce(d = 0, r IN relationships(p3) | d + r.length) ELSE null END AS d3,
+    CASE WHEN p4 IS NOT NULL THEN reduce(d = 0, r IN relationships(p4) | d + r.length) ELSE null END AS d4
+
+// Calculate traffic-aware weights for each path
+WITH p1, p2, p3, p4, d1, d2, d3, d4, timeMultiplier, roadTypeMultipliers,
+    CASE WHEN p1 IS NOT NULL THEN reduce(tw = 0, r IN relationships(p1) | 
+        tw + (r.length * timeMultiplier * COALESCE(roadTypeMultipliers[r.highway], 1.0))) ELSE null END AS tw1,
+    CASE WHEN p2 IS NOT NULL THEN reduce(tw = 0, r IN relationships(p2) | 
+        tw + (r.length * timeMultiplier * COALESCE(roadTypeMultipliers[r.highway], 1.0))) ELSE null END AS tw2,
+    CASE WHEN p3 IS NOT NULL THEN reduce(tw = 0, r IN relationships(p3) | 
+        tw + (r.length * timeMultiplier * COALESCE(roadTypeMultipliers[r.highway], 1.0))) ELSE null END AS tw3,
+    CASE WHEN p4 IS NOT NULL THEN reduce(tw = 0, r IN relationships(p4) | 
+        tw + (r.length * timeMultiplier * COALESCE(roadTypeMultipliers[r.highway], 1.0))) ELSE null END AS tw4
+
+// Select the best path based on traffic-aware weight
+WITH CASE 
+    // Find the path with minimum traffic weight
+    WHEN tw1 IS NOT NULL AND (tw2 IS NULL OR tw1 <= tw2) AND (tw3 IS NULL OR tw1 <= tw3) AND (tw4 IS NULL OR tw1 <= tw4) THEN p1
+    WHEN tw2 IS NOT NULL AND (tw3 IS NULL OR tw2 <= tw3) AND (tw4 IS NULL OR tw2 <= tw4) THEN p2
+    WHEN tw3 IS NOT NULL AND (tw4 IS NULL OR tw3 <= tw4) THEN p3
+    WHEN tw4 IS NOT NULL THEN p4
+    ELSE p3  // Fallback to basic shortest path
+END as selectedPath,
+CASE 
+    WHEN tw1 IS NOT NULL AND (tw2 IS NULL OR tw1 <= tw2) AND (tw3 IS NULL OR tw1 <= tw3) AND (tw4 IS NULL OR tw1 <= tw4) 
+        THEN 'Solo calles residenciales (óptima para tráfico)'
+    WHEN tw2 IS NOT NULL AND (tw3 IS NULL OR tw2 <= tw3) AND (tw4 IS NULL OR tw2 <= tw4) 
+        THEN 'Calles residenciales y secundarias (balanceada)'
+    WHEN tw3 IS NOT NULL AND (tw4 IS NULL OR tw3 <= tw4) 
+        THEN 'Todas las calles (ruta más corta)'
+    WHEN tw4 IS NOT NULL 
+        THEN 'Evitando calles de alto tráfico'
+    ELSE 'Ruta básica más corta'
+END as estrategiaUsada,
+// Keep the best traffic weight for reporting
+CASE 
+    WHEN tw1 IS NOT NULL AND (tw2 IS NULL OR tw1 <= tw2) AND (tw3 IS NULL OR tw1 <= tw3) AND (tw4 IS NULL OR tw1 <= tw4) THEN tw1
+    WHEN tw2 IS NOT NULL AND (tw3 IS NULL OR tw2 <= tw3) AND (tw4 IS NULL OR tw2 <= tw4) THEN tw2
+    WHEN tw3 IS NOT NULL AND (tw4 IS NULL OR tw3 <= tw4) THEN tw3
+    WHEN tw4 IS NOT NULL THEN tw4
+    ELSE tw3
+END as bestTrafficWeight
+
+WHERE selectedPath IS NOT NULL
+
+WITH selectedPath as p, estrategiaUsada, bestTrafficWeight,
+    nodes(selectedPath) AS nodes, 
+    relationships(selectedPath) AS rels,
+    reduce(actualDistance = 0, r IN relationships(selectedPath) | actualDistance + r.length) AS totalDistance
+
+UNWIND range(0, size(rels)-1) AS i
+
+WITH p, nodes, rels, i, totalDistance, estrategiaUsada, bestTrafficWeight,
+    point.distance(nodes[i].location, nodes[size(nodes)-1].location) AS heuristicToDestination
+
+RETURN 
+    i + 1 AS paso,
+    nodes[i].address AS desde,
+    nodes[i+1].address AS hasta,
+    nodes[i].location.y AS fromLat,
+    nodes[i].location.x AS fromLng,
+    nodes[i+1].location.y AS toLat,
+    nodes[i+1].location.x AS toLng,
+    rels[i].name AS nombreCalle,
+    rels[i].highway AS tipoCalle,
+    CASE WHEN rels[i].oneway = true THEN 'Sí' ELSE 'No' END AS unidireccional,
+    rels[i].length AS distancia_metros,
+    heuristicToDestination AS distanciaLineaRectaAlDestino,
+    rels[i].max_speed AS velocidadMaxima_kmh,
+    CASE 
+        WHEN i = 0 THEN 'Inicio' 
+        WHEN i = size(rels)-1 THEN 'Destino' 
+        ELSE 'Continuar por' 
+    END AS instruccion,
+    totalDistance AS distanciaTotal,
+    estrategiaUsada AS estrategiaDeRuta,
+    bestTrafficWeight AS pesoTotalTrafico
+ORDER BY paso;
+"""
 
 
 A_STAR_STEP_BY_STEP_CYPHER_QUERY = """ MATCH (start:Intersection {address: $start_address})
@@ -69,6 +195,7 @@ RETURN
 ORDER BY paso;
 """
 
+
 class Neo4jController:
     def __init__(self):
         self.driver = neo4j.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -78,8 +205,10 @@ class Neo4jController:
         return unidecode(text.lower().strip())
         
     def clean_nan(self, value):
+        if value is None:
+            return "20"
         if isinstance(value, float) and math.isnan(value):
-            return None
+            return "20"
         return value
 
     def find_similar_address(self, address, limit=5, min_similarity=90):
@@ -322,7 +451,7 @@ class Neo4jController:
             self.__init_case_sensitive()
         return self.case_insensitive_map.get(hospital.lower())
 
-    def find_shortest_path(self, start_location, end_location):
+    def find_shortest_path(self, start_location: str, end_location: str, bellman: bool=True):
         start_address = self.get_address_from_hospital(start_location)
         end_address = self.get_address_from_hospital(end_location)
 
@@ -339,14 +468,16 @@ class Neo4jController:
         
         with self.driver.session() as session:
             result = session.run(
-                A_STAR_STEP_BY_STEP_CYPHER_QUERY, 
+                BELLMAN_FORD_STEP_BY_STEP_CYPHER_QUERY if bellman else A_STAR_STEP_BY_STEP_CYPHER_QUERY,
                 start_address=start_address, 
-                end_address=end_address
+                end_address=end_address,
+                current_hour=12,
+                day_type="weekday"
             )
 
             # Consume all records at once
             records = [dict(record) for record in result]
-            
+
             # Clean up the records
             clean_records = []
             for record in records:
@@ -360,6 +491,8 @@ class Neo4jController:
                     else:
                         clean_record[key] = None
                 clean_records.append(clean_record)
+
+            total_travel_time = calculate_approx_time(clean_records)
        
 
-        return clean_records
+        return {"tiempo_estimado": total_travel_time, "ruta": clean_records}
