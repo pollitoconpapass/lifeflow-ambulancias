@@ -46,7 +46,7 @@ def change_lanes_endpoint(data: dict):
 
     return { "cars_in_front": list_cars_in_front, "driver_chosen": list_driver_chosen }
 
-@app.get("/find-similar-address")
+@app.post("/find-similar-address")
 def find_similar_address_neo4j(data: dict):
     similar_addresses = neo4j_admin.find_similar_address(data.get("address"))
     return { "similar_addresses": similar_addresses }
@@ -55,7 +55,16 @@ def find_similar_address_neo4j(data: dict):
 def shortest_path_endpoint(data: LocationRequest):
     return neo4j_admin.find_shortest_path(
         data.start_location,
-        data.end_location
+        data.end_location,
+        bellman=True
+    )
+
+@app.post("/shortest-path-astar")
+def shortest_path_astar_endpoint(data: LocationRequest):
+    return neo4j_admin.find_shortest_path(
+        data.start_location,
+        data.end_location,
+        bellman=False
     )
 
 @app.post("/shortest-path-roads")

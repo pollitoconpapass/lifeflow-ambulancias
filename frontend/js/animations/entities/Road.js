@@ -18,7 +18,7 @@ class Road {
 
     createRoadSegment({ from, to }) {
         const distance = from.distanceTo(to);
-        const roadGeometry = new THREE.PlaneGeometry(8, distance);
+        const roadGeometry = new THREE.PlaneGeometry(10, distance);
         const roadMaterial = new THREE.MeshLambertMaterial({ 
             color: 0x444444,
             side: THREE.DoubleSide
