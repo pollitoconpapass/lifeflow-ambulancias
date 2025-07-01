@@ -243,14 +243,11 @@ class Ambulance {
     }
 
     followWaypoints(waypoints) {
-        console.log(`Current waypoint index: ${this.currentWaypointIndex}, Total waypoints: ${waypoints.length}`);
-        console.log(`Ambulance position:`, this.mesh.position);
+        
         
         if (this.currentWaypointIndex >= waypoints.length) {
-            console.log("🎉 ROUTE COMPLETED!");
             if (!this.routeCompleted) {
                 this.routeCompleted = true;
-                console.log("Calling onRouteCompleted...");
                 if (typeof onRouteCompleted === 'function') {
                     onRouteCompleted(this, waypoints);
                 } else {
@@ -261,18 +258,14 @@ class Ambulance {
         }
         
         const currentWaypoint = waypoints[this.currentWaypointIndex];
-        console.log(`Current waypoint:`, currentWaypoint);
         
         // Estrategia más inteligente para determinar el objetivo
         let targetPosition = currentWaypoint.to;
         let distanceToTarget = this.mesh.position.distanceTo(targetPosition);
         
-        console.log(`Target position:`, targetPosition);
-        console.log(`Distance to target: ${distanceToTarget}`);
-        
         // Si la distancia es demasiado grande, buscar el waypoint más cercano
         if (distanceToTarget > 500) { // Si está a más de 500 unidades
-            console.log("🔍 Distance too large, searching for closest waypoint...");
+            
             
             let closestWaypointIndex = this.currentWaypointIndex;
             let closestDistance = distanceToTarget;
@@ -296,7 +289,6 @@ class Ambulance {
             }
             
             if (closestWaypointIndex !== this.currentWaypointIndex) {
-                console.log(`📍 Skipping to closer waypoint ${closestWaypointIndex} (was ${this.currentWaypointIndex})`);
                 this.currentWaypointIndex = closestWaypointIndex;
                 distanceToTarget = closestDistance;
             }
@@ -310,10 +302,10 @@ class Ambulance {
             switchDistance = Math.max(switchDistance, 50);
         }
         
-        console.log(`Using switch distance: ${switchDistance}`);
+        
         
         if (distanceToTarget < switchDistance) {
-            console.log(`✅ Reached waypoint ${this.currentWaypointIndex}! Moving to next...`);
+            
             this.currentWaypointIndex++;
             this.stepProgress = 0;
             
@@ -341,7 +333,7 @@ class Ambulance {
                 this.stepProgress = Math.min(100, (traveledDistance / totalDistance) * 100);
             }
             
-            console.log(`Progress: ${this.stepProgress.toFixed(1)}%`);
+            // console.log(`Progress: ${this.stepProgress.toFixed(1)}%`);
         }
     }
 

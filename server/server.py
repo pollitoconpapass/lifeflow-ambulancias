@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from utils.neo4j_funcs import Neo4jController
-from utils.cars_licenses import sort_licenses, change_lanes
+from utils.cars_licenses import sort_licenses, change_lanes, read_whole_csv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
@@ -19,11 +19,17 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 app = FastAPI()
 neo4j_admin = Neo4jController()
 
+origins = [
+    "http://localhost:8082",
+    "http://127.0.0.1:5500",
+    "http://127.0.0.1:5500/"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
 
@@ -31,6 +37,9 @@ class LocationRequest(BaseModel):
     start_location: str
     end_location: str
 
+@app.get("/whole-csv")
+def read_whole_csv_endpoint():
+    return read_whole_csv(DATA_PATH)
 
 @app.post("/change-lanes")
 def change_lanes_endpoint(data: dict):

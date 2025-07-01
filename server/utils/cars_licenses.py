@@ -1,5 +1,8 @@
 import pandas as pd
 
+def read_whole_csv(path_document: str) -> list:
+    df = pd.read_csv(path_document)
+    return df.to_dict(orient='records')
 
 def sort_licenses(path_document: str)-> list:
     df = pd.read_csv(path_document)

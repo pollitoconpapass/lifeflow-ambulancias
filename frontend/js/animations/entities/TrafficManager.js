@@ -11,6 +11,7 @@ class TrafficManager {
         this.trafficPatterns = {
             // Weekday patterns (Monday-Friday)
             weekday: {
+                //                horaInicio  horaFin   intensidad    intervalo (1 auto cada X m)
                 rushHourMorning: { start: 7, end: 9, intensity: 0.9, interval: 800 },
                 midMorning: { start: 9, end: 11, intensity: 0.4, interval: 2500 },
                 lunch: { start: 11, end: 14, intensity: 0.6, interval: 1800 },
@@ -284,5 +285,108 @@ class TrafficManager {
         global.Date = originalDate;
         
         return pattern;
+    }
+}
+
+
+class TrafficManagerWithDrivers extends TrafficManager {
+    constructor(scene, routePoints, driverDataManager) {
+        super(scene, routePoints);
+        this.driverDataManager = driverDataManager;
+    }
+
+    async initialize(csvPath='/Users/jose/Documents/uni-docs/complejidad/lifeflow-ambulancias/data/placas_carros.csv') {
+        // Load driver data
+        const success = await this.driverDataManager.loadDriverData(csvPath);
+        if (success) {
+            console.log('TrafficManager initialized with driver data');
+        } else {
+            console.log('TrafficManager initialized with fallback data');
+        }   
+        return success;
+    }
+
+    spawnVehicle(forceSegment = null, forceProgress = null) {
+        const type = this.selectVehicleType();
+        
+        // Get driver data
+        const driverData = this.driverDataManager.getRandomAvailableDriver();
+        
+        const options = {
+            type: type,
+            laneOffset: (Math.random() - 0.5) * 2.5
+        };
+        
+        // Create vehicle with driver data
+        const vehicle = new TrafficVehicleWithDriver(
+            this.scene, 
+            this.routePoints, 
+            options, 
+            driverData
+        );
+        
+        // If specific position is requested, override the random position
+        if (forceSegment !== null && forceProgress !== null) {
+            vehicle.currentSegment = forceSegment;
+            vehicle.progress = forceProgress;
+        }
+        
+        this.vehicles.push(vehicle);
+        
+        console.log(`Spawned ${type} driven by ${driverData['dueño']} (Level: ${driverData['nivel de conduccion']})`);
+        return vehicle;
+    }
+
+    spawnVehicleAtSegment(segment) {
+        const type = this.selectVehicleType();
+        
+        // Get driver data
+        const driverData = this.driverDataManager.getRandomAvailableDriver();
+        
+        const options = {
+            type: type,
+            laneOffset: (Math.random() - 0.5) * 2.5
+        };
+        
+        const vehicle = new TrafficVehicleWithDriver(
+            this.scene, 
+            this.routePoints, 
+            options, 
+            driverData
+        );
+        
+        vehicle.currentSegment = segment;
+        vehicle.progress = Math.random();
+        
+        this.vehicles.push(vehicle);
+        console.log(`Spawned ${type} at segment ${segment} driven by ${driverData['dueño']}`);
+    }
+
+    // Override populateInitialTraffic to use new vehicle class
+    populateInitialTraffic(playerStartSegment = 0) {
+        const pattern = this.getCurrentTrafficPattern();
+        const baseVehicleCount = Math.floor(this.maxVehicles * pattern.intensity);
+        const vehicleCount = Math.max(3, Math.min(baseVehicleCount, this.maxVehicles));
+        
+        console.log(`Populating road with ${vehicleCount} initial vehicles with drivers`);
+        
+        for (let i = 0; i < vehicleCount; i++) {
+            this.spawnInitialVehicle(playerStartSegment);
+        }
+    }
+
+    spawnInitialVehicle(playerStartSegment) {
+        const totalSegments = this.routePoints.length - 1;
+        let segment, progress;
+        
+        // Create vehicles distributed across the route, avoiding player start area
+        const avoidanceZone = 5; // segments to avoid around player
+        
+        do {
+            segment = Math.floor(Math.random() * totalSegments);
+            progress = Math.random();
+        } while (Math.abs(segment - playerStartSegment) < avoidanceZone);
+        
+        this.spawnVehicle(segment, progress);
     }
 }

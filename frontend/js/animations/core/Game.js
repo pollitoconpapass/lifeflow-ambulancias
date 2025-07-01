@@ -19,10 +19,13 @@ class Game {
         // Generate road
         this.road.generateRoad(this.points);
 
-        // Generate traffic
-        this.trafficManager = new TrafficManager(this.gameScene.scene, this.points);
-        const playerStartSegment = 0
-        this.trafficManager.populateInitialTraffic(playerStartSegment)
+        // Initialize traffic system with driver data
+        this.initializeTrafficSystem();
+
+        // // Generate traffic
+        // this.trafficManager = new TrafficManager(this.gameScene.scene, this.points);
+        // const playerStartSegment = 0
+        // this.trafficManager.populateInitialTraffic(playerStartSegment)
        
         
         // Generate buildings
@@ -35,10 +38,48 @@ class Game {
         const endPosition = this.points[this.points.length - 1]
         Hospital.createHospital(this.gameScene.scene, endPosition);
 
-        gameInstance = this
+        window.gameInstance = this
         
         // Start game loop
         this.animate();
+    }
+
+    async initializeTrafficSystem() {
+        try {
+            // Create driver data manager
+            window.driverDataManager = new DriverManager();
+
+            // Create enhanced traffic manager
+            this.trafficManager = new TrafficManagerWithDrivers(
+                this.gameScene.scene, 
+                this.points, 
+                window.driverDataManager
+            );
+
+            // Initialize with CSV data
+            const csvPath = '/Users/jose/Documents/uni-docs/complejidad/lifeflow-ambulancias/data/placas_carros.csv';
+            
+            console.log('Loading driver data from CSV...');
+            const success = await this.trafficManager.initialize(csvPath);
+            
+            if (success) {
+                console.log('Driver data loaded successfully!');
+            } else {
+                console.log('Using fallback driver data');
+            }
+
+            // Populate initial traffic after data is loaded
+            const playerStartSegment = 0;
+            this.trafficManager.populateInitialTraffic(playerStartSegment);
+            
+        } catch (error) {
+            console.error('Error initializing traffic system:', error);
+            
+            // Fallback to original system if there's an error
+            this.trafficManager = new TrafficManager(this.gameScene.scene, this.points);
+            const playerStartSegment = 0;
+            this.trafficManager.populateInitialTraffic(playerStartSegment);
+        }
     }
 
     animate() {
@@ -48,7 +89,6 @@ class Game {
         
         // Update game objects
         this.ambulance.update(this.inputManager, this.waypoints);
-
         recordSpeedSample(this.ambulance.speed)
         
         // Update camera
@@ -59,7 +99,10 @@ class Game {
         
         // Update traffic vehicles
         const playerSegment = this.ambulance.currentWaypointIndex || 0;
-        this.trafficManager.update(deltaTime, playerSegment)
+        if (this.trafficManager) {
+            this.trafficManager.update(deltaTime, playerSegment);
+        }
+
 
         // Render scene
         this.gameScene.render();
