@@ -452,3 +452,136 @@ class TrafficVehicle {
         }
     }
 }
+
+class TrafficVehicleWithDriver extends TrafficVehicle {
+    constructor(scene, routePoints, options = {}, driverData = null) {
+        super(scene, routePoints, options);
+        
+        // Driver information
+        this.driverData = driverData || {
+            placa: 'UNK000',
+            'dueño': 'Unknown Driver',
+            'nivel de conduccion': 50
+        };
+        
+        // Create driver info display
+        this.driverDisplay = this.createDriverDisplay();
+        scene.add(this.driverDisplay);
+        
+        // Adjust behavior based on driving level
+        this.adjustBehaviorByDrivingLevel();
+    }
+
+    createDriverDisplay() {
+        const group = new THREE.Group();
+        
+        // Create canvas for text
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 512;
+        canvas.height = 256;
+        
+        // Clear canvas
+        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Set text properties
+        context.font = 'bold 36px Arial';
+        context.textAlign = 'center';
+        context.fillStyle = '#ffffff';
+        
+        // Draw owner name
+        const ownerName = this.driverData['dueño'] || 'Unknown';
+        context.fillText(ownerName, canvas.width / 2, 80);
+        
+        // Draw driving level with color coding
+        const drivingLevel = this.driverData['nivel de conduccion'] || 0;
+        const levelColor = this.getDrivingLevelColor(drivingLevel);
+        context.fillStyle = levelColor;
+        context.font = 'bold 48px Arial';
+        context.fillText(`Level: ${drivingLevel}`, canvas.width / 2, 140);
+        
+        // Draw license plate
+        context.fillStyle = '#cccccc';
+        context.font = 'bold 24px Arial';
+        context.fillText(this.driverData.placa || 'UNK000', canvas.width / 2, 180);
+        
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        
+        // Create sprite
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true,
+            alphaTest: 0.1
+        });
+        
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(4, 2, 1); // Adjust size as needed
+        sprite.position.y = 3; // Position above vehicle
+        
+        group.add(sprite);
+        return group;
+    }
+
+    getDrivingLevelColor(level) {
+        if (level >= 75) return '#00ff00'; // Green
+        if (level >= 50) return '#ffff00'; // Yellow
+        return '#ff0000'; // Red
+    }
+
+    adjustBehaviorByDrivingLevel() {
+        const level = this.driverData['nivel de conduccion'] || 50;
+        
+        // Adjust vehicle behavior based on driving skill
+        if (level >= 75) {
+            // Excellent drivers: smooth, predictable
+            this.aggressiveness = 0.3; // Less aggressive
+            this.followDistance *= 1.2; // Maintain better distance
+            this.acceleration *= 1.1; // Slightly better acceleration
+            this.maxSpeed *= 1.05; // Slightly faster
+        } else if (level >= 50) {
+            // Average drivers: normal behavior
+            // Keep default values
+        } else {
+            // Poor drivers: erratic, slower
+            this.aggressiveness = 0.8; // More erratic
+            this.followDistance *= 0.8; // Follow too closely
+            this.acceleration *= 0.8; // Slower acceleration
+            this.maxSpeed *= 0.9; // Drive slower
+            this.deceleration *= 1.3; // Brake harder
+        }
+    }
+
+    update(deltaTime = 0.016, nearbyVehicles = []) {
+        // Call parent update
+        super.update(deltaTime, nearbyVehicles);
+        
+        // Update driver display position to follow vehicle
+        if (this.driverDisplay) {
+            this.driverDisplay.position.copy(this.mesh.position);
+            this.driverDisplay.position.y += 3; // Keep above vehicle
+            
+            // Make sprite face camera (billboard effect)
+            if (this.scene && this.scene.camera) {
+                this.driverDisplay.lookAt(this.scene.camera.position);
+            }
+        }
+    }
+
+    dispose() {
+        // Clean up driver display
+        if (this.driverDisplay && this.driverDisplay.parent) {
+            this.driverDisplay.parent.remove(this.driverDisplay);
+        }
+        
+        // Release driver for reuse
+        if (window.driverDataManager) {
+            window.driverDataManager.releaseDriver(this.driverData.placa);
+        }
+        
+        // Call parent dispose
+        super.dispose();
+    }
+}

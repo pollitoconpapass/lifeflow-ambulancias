@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambulance Route Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        canvas {
+            border: 3px solid #34495e;
+            background-color: #27ae60;
+            border-radius: 10px;
+        }
+        
+        .game-info {
+            margin: 10px 0;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .route-info {
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: center;
+            background-color: #34495e;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 400px;
+        }
+        
+        .driver-selection {
+            display: none;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .driver-button {
+            background-color: #3498db;
+            border: none;
+            color: white;
+            padding: 15px 25px;
+            margin: 0 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .driver-button:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+        
+        .retry-button {
+            background-color: #e74c3c;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .retry-button:hover {
+            background-color: #c0392b;
+        }
+        
+        .instructions {
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .loading {
+            display: block;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        
+        .route-controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .route-input {
+            margin: 5px;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #bdc3c7;
+            width: 250px;
+        }
+        
+        .start-button {
+            background-color: #27ae60;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .start-button:hover {
+            background-color: #229954;
+        }
+        
+        .start-button:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h1>🚑 Emergency Ambulance Route Game</h1>
+        <p>Help the ambulance follow the optimal route to the hospital! When blocked by vehicles, click on the driver with <strong>MORE POINTS</strong> to convince them to move.</p>
+    </div>
+    
+    <div class="route-controls">
+        <div>
+            <input type="text" id="startLocation" class="route-input" placeholder="Start location" value="Jirón Andrés Vesalio 101">
+            <input type="text" id="endLocation" class="route-input" placeholder="End location" value="Instituto Medico Neoplasicas">
+        </div>
+        <button class="start-button" id="loadRouteBtn" onclick="loadRoute()">Load Route & Start Game</button>
+    </div>
+    
+    <div class="loading" id="loadingMessage" style="display: none;">Loading optimal route...</div>
+    
+    <div class="route-info" id="routeInfo" style="display: none;">
+        <div><strong>From:</strong> <span id="routeStart"></span></div>
+        <div><strong>To:</strong> <span id="routeEnd"></span></div>
+        <div><strong>Estimated Time:</strong> <span id="estimatedTime"></span></div>
+        <div><strong>Current Street:</strong> <span id="currentStreet">-</span></div>
+    </div>
+    
+    <div class="game-info">
+        <div>Score: <span id="score">0</span> | Obstacles Cleared: <span id="obstacles">0</span> | Progress: <span id="progress">0%</span></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="600" style="display: none;"></canvas>
+    
+    <div class="driver-selection" id="driverSelection">
+        <h3>Choose the driver with MORE points!</h3>
+        <div>
+            <button class="driver-button" id="leftDriver" onclick="selectDriver('left')">
+                Driver A: <span id="leftPoints">0</span> points
+            </button>
+            <button class="driver-button" id="rightDriver" onclick="selectDriver('right')">
+                Driver B: <span id="rightPoints">0</span> points
+            </button>
+        </div>
+        <div id="feedback" style="margin-top: 10px; font-weight: bold;"></div>
+        <button class="retry-button" id="retryButton" onclick="retrySelection()" style="display: none;">Try Again</button>
+    </div>
+
+    <script>
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = 'waiting'; // waiting, playing, blocked, completed
+        let score = 0;
+        let obstaclesCleared = 0;
+        let routeData = null;
+        let routeSteps = [];
+        let roadPoints = []; // Smooth road curve points
+        let currentPointIndex = 0;
+        let pointProgress = 0; // Progress along current road segment
+        let distanceTraveled = 0;
+        let totalRouteDistance = 0;
+        
+        // Game objects
+        const ambulance = {
+            x: canvas.width / 2,
+            y: canvas.height - 150,
+            width: 40,
+            height: 60,
+            rotation: 0,
+            targetRotation: 0,
+            speed: 0.5 // Much slower speed - points per frame along road
+        };
+        
+        let obstacles = [];
+        let currentObstacle = null;
+        let currentDrivers = { left: 0, right: 0 };
+        let cameraY = 0; // For scrolling effect
+        
+        // Load route from API
+        async function loadRoute() {
+            const startLocation = document.getElementById('startLocation').value;
+            const endLocation = document.getElementById('endLocation').value;
+            
+            if (!startLocation || !endLocation) {
+                alert('Please enter both start and end locations');
+                return;
+            }
+            
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('loadRouteBtn').disabled = true;
+            
+            try {
+                const response = await fetch('http://0.0.0.0:8082/shortest-path', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        start_location: startLocation,
+                        end_location: endLocation
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                routeData = await response.json();
+                processRouteData();
+                initGame();
+                
+            } catch (error) {
+                console.error('Error loading route:', error);
+                alert('Error loading route. Using demo route instead.');
+                loadDemoRoute();
+            }
+            
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('loadRouteBtn').disabled = false;
+        }
+        
+        // Load demo route for testing
+        function loadDemoRoute() {
+            routeData = {
+                tiempo_estimado: "10 minutos",
+                ruta: [
+                    {
+                        paso: 1,
+                        desde: "Jirón Andrés Vesalio 101",
+                        hasta: "Avenida de las Artes Sur",
+                        fromLat: -12.1051572,
+                        fromLng: -77.0086219,
+                        toLat: -12.1051525,
+                        toLng: -77.0063033,
+                        nombreCalle: "Jirón Andrés Vesalio",
+                        distancia_metros: 252.09
+                    },
+                    {
+                        paso: 2,
+                        desde: "Avenida de las Artes Sur",
+                        hasta: "Jirón Eduardo Ordoñez",
+                        fromLat: -12.1051525,
+                        fromLng: -77.0063033,
+                        toLat: -12.1057767,
+                        toLng: -77.0063047,
+                        nombreCalle: "Avenida de las Artes Sur",
+                        distancia_metros: 169.41
+                    },
+                    {
+                        paso: 3,
+                        desde: "Jirón Eduardo Ordoñez",
+                        hasta: "Hospital Nacional",
+                        fromLat: -12.1057767,
+                        fromLng: -77.0063047,
+                        toLat: -12.1045,
+                        toLng: -77.0055,
+                        nombreCalle: "Jirón Eduardo Ordoñez",
+                        distancia_metros: 180.25
+                    },
+                    {
+                        paso: 4,
+                        desde: "Hospital Nacional",
+                        hasta: "Final",
+                        fromLat: -12.1045,
+                        fromLng: -77.0055,
+                        toLat: -12.1035,
+                        toLng: -77.0040,
+                        nombreCalle: "Av. Hospital",
+                        distancia_metros: 200.00
+                    }
+                ]
+            };
+            processRouteData();
+            initGame();
+        }
+        
+        // Process route data and generate smooth road curve
+        function processRouteData() {
+            routeSteps = routeData.ruta;
+            totalRouteDistance = routeSteps.reduce((sum, step) => sum + step.distancia_metros, 0);
+            
+            // Generate smooth road points
+            generateRoadPoints();
+            
+            // Create obstacles at strategic points
+            createRouteObstacles();
+            
+            // Update UI
+            document.getElementById('routeStart').textContent = document.getElementById('startLocation').value || routeSteps[0].desde;
+            document.getElementById('routeEnd').textContent = document.getElementById('endLocation').value || routeSteps[routeSteps.length-1].hasta;
+            document.getElementById('estimatedTime').textContent = routeData.tiempo_estimado;
+            document.getElementById('routeInfo').style.display = 'block';
+        }
+        
+        // Generate connected road points that flow like Leaflet map
+        function generateRoadPoints() {
+            roadPoints = [];
+            let accumulatedDistance = 0;
+            let currentX = canvas.width / 2;
+            let currentY = 0;
+            
+            // Process each route step to create connected road segments
+            routeSteps.forEach((step, stepIndex) => {
+                // Calculate the actual direction this step is going
+                const bearing = calculateBearing(step.fromLat, step.fromLng, step.toLat, step.toLng);
+                
+                // Convert bearing to movement direction
+                // North = up, East = right, South = down, West = left
+                let direction = 'north'; // default
+                if (bearing >= 45 && bearing < 135) direction = 'east';
+                else if (bearing >= 135 && bearing < 225) direction = 'south';
+                else if (bearing >= 225 && bearing < 315) direction = 'west';
+                else direction = 'north';
+                
+                // Create segments for this step
+                const segments = Math.max(5, Math.floor(step.distancia_metros / 20));
+                const segmentDistance = step.distancia_metros / segments;
+                
+                for (let i = 0; i <= segments; i++) {
+                    const progress = i / segments;
+                    const distance = accumulatedDistance + (segmentDistance * i);
+                    
+                    // Calculate position based on direction
+                    let x = currentX;
+                    let y = currentY + (distance * 1.0); // Base vertical movement
+                    
+                    // Apply directional movement for this step
+                    const stepProgress = progress * step.distancia_metros * 0.5; // Scale factor
+                    
+                    switch (direction) {
+                        case 'east':
+                            x = currentX + stepProgress;
+                            y = currentY + (accumulatedDistance * 1.0); // Maintain base position
+                            break;
+                        case 'west':
+                            x = currentX - stepProgress;
+                            y = currentY + (accumulatedDistance * 1.0);
+                            break;
+                        case 'south':
+                            // Continue straight down
+                            y = currentY + distance * 1.0;
+                            break;
+                        case 'north':
+                            // Go up (rare in typical routes)
+                            y = currentY + distance * 1.0;
+                            break;
+                    }
+                    
+                    // Keep roads within canvas bounds
+                    x = Math.max(100, Math.min(canvas.width - 100, x));
+                    
+                    roadPoints.push({
+                        x: x,
+                        y: y,
+                        bearing: bearing,
+                        direction: direction,
+                        streetName: step.nombreCalle,
+                        distance: distance,
+                        stepIndex: stepIndex,
+                        segmentProgress: progress
+                    });
+                }
+                
+                // Update current position for next step
+                if (roadPoints.length > 0) {
+                    const lastPoint = roadPoints[roadPoints.length - 1];
+                    currentX = lastPoint.x;
+                    currentY = lastPoint.y;
+                }
+                
+                accumulatedDistance += step.distancia_metros;
+            });
+        }
+        
+        // Calculate bearing between two GPS points
+        function calculateBearing(lat1, lng1, lat2, lng2) {
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const lat1Rad = lat1 * Math.PI / 180;
+            const lat2Rad = lat2 * Math.PI / 180;
+            
+            const y = Math.sin(dLng) * Math.cos(lat2Rad);
+            const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+            
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+        
+        // Create obstacles along the route
+        function createRouteObstacles() {
+            obstacles = [];
+            const obstaclePoints = [
+                Math.floor(roadPoints.length * 0.25),
+                Math.floor(roadPoints.length * 0.5),
+                Math.floor(roadPoints.length * 0.75)
+            ];
+            
+            obstaclePoints.forEach((pointIndex, index) => {
+                if (pointIndex < roadPoints.length) {
+                    obstacles.push({
+                        pointIndex: pointIndex,
+                        cleared: false,
+                        streetName: roadPoints[pointIndex].streetName,
+                        distance: roadPoints[pointIndex].distance
+                    });
+                }
+            });
+        }
+        
+        // Generate random driver points
+        function generateDriverPoints() {
+            return {
+                left: Math.floor(Math.random() * 101),
+                right: Math.floor(Math.random() * 101)
+            };
+        }
+        
+        // Draw connected road like Leaflet map
+        function drawRoad() {
+            if (roadPoints.length < 2) return;
+            
+            const roadWidth = 100;
+            
+            // Find visible road segment
+            const startIndex = Math.max(0, currentPointIndex - 40);
+            const endIndex = Math.min(roadPoints.length - 1, currentPointIndex + 60);
+            
+            // Group points by step to draw connected segments
+            const stepGroups = {};
+            for (let i = startIndex; i <= endIndex; i++) {
+                const point = roadPoints[i];
+                if (!point) continue;
+                
+                const stepIndex = point.stepIndex;
+                if (!stepGroups[stepIndex]) stepGroups[stepIndex] = [];
+                stepGroups[stepIndex].push(point);
+            }
+            
+            // Draw each step as a connected road segment
+            Object.values(stepGroups).forEach(stepPoints => {
+                if (stepPoints.length < 2) return;
+                
+                ctx.fillStyle = '#34495e';
+                
+                // Create path for this road segment
+                ctx.beginPath();
+                
+                // Start with the road edges
+                stepPoints.forEach((point, index) => {
+                    const screenY = canvas.height - ambulance.y - (point.y - cameraY);
+                    const leftX = point.x - roadWidth / 2;
+                    
+                    if (index === 0) ctx.moveTo(leftX, screenY);
+                    else ctx.lineTo(leftX, screenY);
+                });
+                
+                // Complete the path with right edge (reverse order)
+                for (let i = stepPoints.length - 1; i >= 0; i--) {
+                    const point = stepPoints[i];
+                    const screenY = canvas.height - ambulance.y - (point.y - cameraY);
+                    const rightX = point.x + roadWidth / 2;
+                    ctx.lineTo(rightX, screenY);
+                }
+                
+                ctx.closePath();
+                ctx.fill();
+            });
+            
+            // Draw intersections/connections between segments
+            for (let stepIndex in stepGroups) {
+                const currentStep = stepGroups[stepIndex];
+                const nextStep = stepGroups[parseInt(stepIndex) + 1];
+                
+                if (currentStep && nextStep && currentStep.length > 0 && nextStep.length > 0) {
+                    const lastPoint = currentStep[currentStep.length - 1];
+                    const firstNextPoint = nextStep[0];
+                    
+                    // Draw connection between segments
+                    ctx.fillStyle = '#34495e';
+                    ctx.beginPath();
+                    
+                    const lastScreenY = canvas.height - ambulance.y - (lastPoint.y - cameraY);
+                    const nextScreenY = canvas.height - ambulance.y - (firstNextPoint.y - cameraY);
+                    
+                    // Create rectangle to connect the segments
+                    const minX = Math.min(lastPoint.x, firstNextPoint.x) - roadWidth/2;
+                    const maxX = Math.max(lastPoint.x, firstNextPoint.x) + roadWidth/2;
+                    const minY = Math.min(lastScreenY, nextScreenY);
+                    const maxY = Math.max(lastScreenY, nextScreenY);
+                    
+                    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+                }
+            }
+            
+            // Draw center line
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12, 8]);
+            ctx.beginPath();
+            
+            let lineStarted = false;
+            for (let i = startIndex; i <= endIndex; i++) {
+                const point = roadPoints[i];
+                if (!point) continue;
+                
+                const screenY = canvas.height - ambulance.y - (point.y - cameraY);
+                
+                if (screenY < canvas.height + 50 && screenY > -50) {
+                    if (!lineStarted) {
+                        ctx.moveTo(point.x, screenY);
+                        lineStarted = true;
+                    } else {
+                        ctx.lineTo(point.x, screenY);
+                    }
+                }
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw road borders
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 3;
+            
+            // Draw borders for each step segment
+            Object.values(stepGroups).forEach(stepPoints => {
+                if (stepPoints.length < 2) return;
+                
+                // Left border
+                ctx.beginPath();
+                stepPoints.forEach((point, index) => {
+                    const screenY = canvas.height - ambulance.y - (point.y - cameraY);
+                    const leftX = point.x - roadWidth / 2;
+                    
+                    if (index === 0) ctx.moveTo(leftX, screenY);
+                    else ctx.lineTo(leftX, screenY);
+                });
+                ctx.stroke();
+                
+                // Right border
+                ctx.beginPath();
+                stepPoints.forEach((point, index) => {
+                    const screenY = canvas.height - ambulance.y - (point.y - cameraY);
+                    const rightX = point.x + roadWidth / 2;
+                    
+                    if (index === 0) ctx.moveTo(rightX, screenY);
+                    else ctx.lineTo(rightX, screenY);
+                });
+                ctx.stroke();
+            });
+        }
+        
+        // Draw ambulance with rotation
+        function drawAmbulance() {
+            ctx.save();
+            
+            // Translate to ambulance position and rotate
+            ctx.translate(ambulance.x, ambulance.y);
+            ctx.rotate(ambulance.rotation * Math.PI / 180);
+            
+            // Draw ambulance body
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-ambulance.width/2, -ambulance.height/2, ambulance.width, ambulance.height);
+            
+            // Red cross
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(-8, -15, 5, 20);
+            ctx.fillRect(-12, -8, 12, 5);
+            
+            // Ambulance windows
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-15, -25, 30, 12);
+            
+            // Emergency lights
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(-15, -30, 10, 4);
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(5, -30, 10, 4);
+            
+            ctx.restore();
+        }
+        
+        // Draw blocking vehicles
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                if (!obstacle.cleared) {
+                    const obstaclePoint = roadPoints[obstacle.pointIndex];
+                    if (!obstaclePoint) return;
+                    
+                    const screenY = canvas.height - ambulance.y - (obstaclePoint.y - cameraY);
+                    
+                    // Only draw if visible on screen
+                    if (screenY > -100 && screenY < canvas.height + 100) {
+                        const roadWidth = 120;
+                        
+                        // Add visual warning when approaching obstacle
+                        const ambulanceScreenY = ambulance.y;
+                        const distanceToObstacle = Math.abs(ambulanceScreenY - screenY);
+                        
+                        // Warning indicator when approaching
+                        if (distanceToObstacle < 100 && screenY < ambulanceScreenY) {
+                            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+                            ctx.fillRect(obstaclePoint.x - roadWidth/2, screenY - 40, roadWidth, 80);
+                            
+                            // Warning text
+                            ctx.fillStyle = '#e74c3c';
+                            ctx.font = 'bold 14px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('⚠️ OBSTACLE AHEAD', obstaclePoint.x, screenY - 50);
+                        }
+                        
+                        // Left car
+                        ctx.fillStyle = '#e67e22';
+                        ctx.fillRect(obstaclePoint.x - roadWidth/2 + 10, screenY - 30, 45, 60);
+                        ctx.fillStyle = '#d35400';
+                        ctx.fillRect(obstaclePoint.x - roadWidth/2 + 15, screenY - 25, 35, 15);
+                        
+                        // Right car
+                        ctx.fillStyle = '#9b59b6';
+                        ctx.fillRect(obstaclePoint.x + roadWidth/2 - 55, screenY - 30, 45, 60);
+                        ctx.fillStyle = '#8e44ad';
+                        ctx.fillRect(obstaclePoint.x + roadWidth/2 - 50, screenY - 25, 35, 15);
+                        
+                        // Car details (windows, etc.)
+                        ctx.fillStyle = '#34495e';
+                        ctx.fillRect(obstaclePoint.x - roadWidth/2 + 18, screenY - 20, 20, 8);
+                        ctx.fillRect(obstaclePoint.x + roadWidth/2 - 42, screenY - 20, 20, 8);
+                    }
+                }
+            });
+        }
+        
+        // Update ambulance position and rotation to follow actual road direction
+        function updateAmbulance() {
+            if (gameState !== 'playing' || currentPointIndex >= roadPoints.length - 1) return;
+            
+            // Move along road points (slower, more controlled movement)
+            pointProgress += ambulance.speed;
+            
+            // Only advance to next point when we've traveled enough distance
+            if (pointProgress >= 8 && currentPointIndex < roadPoints.length - 1) {
+                pointProgress = 0;
+                currentPointIndex++;
+            }
+            
+            // Update ambulance position
+            if (currentPointIndex < roadPoints.length - 1) {
+                const currentPoint = roadPoints[currentPointIndex];
+                const nextPoint = roadPoints[currentPointIndex + 1];
+                
+                // Interpolate position
+                const t = pointProgress / 8;
+                ambulance.x = currentPoint.x + (nextPoint.x - currentPoint.x) * t;
+                
+                // Set ambulance rotation to actual road direction
+                if (nextPoint.screenDirection !== undefined) {
+                    ambulance.targetRotation = nextPoint.screenDirection;
+                } else {
+                    // Calculate direction based on movement
+                    const dx = nextPoint.x - currentPoint.x;
+                    const dy = nextPoint.y - currentPoint.y;
+                    if (Math.abs(dx) > 5) { // Only rotate for significant horizontal movement
+                        ambulance.targetRotation = dx > 0 ? 90 : -90; // Right or left turn
+                    } else {
+                        ambulance.targetRotation = 0; // Straight ahead
+                    }
+                }
+                
+                // Apply rotation immediately for sharp turns, smoothly for slight adjustments
+                let rotDiff = ambulance.targetRotation - ambulance.rotation;
+                while (rotDiff > 180) rotDiff -= 360;
+                while (rotDiff < -180) rotDiff += 360;
+                
+                // Faster rotation for significant direction changes
+                const rotationSpeed = Math.abs(rotDiff) > 60 ? 0.3 : 0.1;
+                ambulance.rotation += rotDiff * rotationSpeed;
+                
+                // Update camera position
+                cameraY = currentPoint.y + (nextPoint.y - currentPoint.y) * t;
+                distanceTraveled = currentPoint.distance + (nextPoint.distance - currentPoint.distance) * t;
+                
+                // Update UI
+                document.getElementById('currentStreet').textContent = currentPoint.streetName;
+                const progress = Math.min((distanceTraveled / totalRouteDistance) * 100, 100);
+                document.getElementById('progress').textContent = Math.round(progress) + '%';
+            }
+            
+            // Check for obstacles
+            checkCollisions();
+            
+            // Check win condition
+            if (currentPointIndex >= roadPoints.length - 2) {
+                checkWinCondition();
+            }
+        }
+        
+        // Check collision with obstacles
+        function checkCollisions() {
+            obstacles.forEach(obstacle => {
+                if (!obstacle.cleared) {
+                    const obstaclePoint = roadPoints[obstacle.pointIndex];
+                    if (!obstaclePoint) return;
+                    
+                    // Calculate actual distance between ambulance and obstacle
+                    const ambulanceScreenY = ambulance.y;
+                    const obstacleScreenY = canvas.height - ambulance.y - (obstaclePoint.y - cameraY);
+                    const distanceToObstacle = Math.abs(ambulanceScreenY - obstacleScreenY);
+                    const horizontalDistance = Math.abs(ambulance.x - obstaclePoint.x);
+                    
+                    // Only trigger collision when ambulance is very close to the obstacle
+                    if (distanceToObstacle < 40 && horizontalDistance < 60 && gameState === 'playing') {
+                        gameState = 'blocked';
+                        currentObstacle = obstacle;
+                        currentDrivers = generateDriverPoints();
+                        showDriverSelection();
+                    }
+                }
+            });
+        }
+        
+        // Show driver selection UI
+        function showDriverSelection() {
+            document.getElementById('leftPoints').textContent = currentDrivers.left;
+            document.getElementById('rightPoints').textContent = currentDrivers.right;
+            document.getElementById('driverSelection').style.display = 'block';
+            document.getElementById('feedback').textContent = '';
+            document.getElementById('retryButton').style.display = 'none';
+        }
+        
+        // Hide driver selection UI
+        function hideDriverSelection() {
+            document.getElementById('driverSelection').style.display = 'none';
+        }
+        
+        // Handle driver selection
+        function selectDriver(side) {
+            const leftPoints = currentDrivers.left;
+            const rightPoints = currentDrivers.right;
+            const feedback = document.getElementById('feedback');
+            
+            let selectedPoints = side === 'left' ? leftPoints : rightPoints;
+            let otherPoints = side === 'left' ? rightPoints : leftPoints;
+            
+            if (selectedPoints > otherPoints) {
+                feedback.textContent = '✅ Correct! The ambulance can pass!';
+                feedback.style.color = '#27ae60';
+                
+                currentObstacle.cleared = true;
+                obstaclesCleared++;
+                score += 10;
+                
+                setTimeout(() => {
+                    gameState = 'playing';
+                    hideDriverSelection();
+                    updateScore();
+                }, 1500);
+                
+            } else if (selectedPoints === otherPoints) {
+                feedback.textContent = '⚖️ Equal points! The ambulance can pass!';
+                feedback.style.color = '#f39c12';
+                
+                currentObstacle.cleared = true;
+                obstaclesCleared++;
+                score += 5;
+                
+                setTimeout(() => {
+                    gameState = 'playing';
+                    hideDriverSelection();
+                    updateScore();
+                }, 1500);
+                
+            } else {
+                feedback.textContent = `❌ Wrong! Driver ${side === 'left' ? 'B' : 'A'} had more points (${otherPoints} > ${selectedPoints})`;
+                feedback.style.color = '#e74c3c';
+                document.getElementById('retryButton').style.display = 'inline-block';
+            }
+        }
+        
+        // Retry selection
+        function retrySelection() {
+            currentDrivers = generateDriverPoints();
+            showDriverSelection();
+        }
+        
+        // Update score display
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('obstacles').textContent = obstaclesCleared;
+        }
+        
+        // Check win condition
+        function checkWinCondition() {
+            gameState = 'completed';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#27ae60';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🏥 Hospital Reached!', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+            
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('Emergency route completed!', canvas.width / 2, canvas.height / 2 + 60);
+        }
+        
+        // Game loop
+        function gameLoop() {
+            if (gameState === 'waiting') return;
+            
+            // Clear entire canvas with green background
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawRoad();
+            drawObstacles();
+            drawAmbulance();
+            updateAmbulance();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize game
+        function initGame() {
+            if (!routeData || roadPoints.length === 0) return;
+            
+            // Reset game state
+            gameState = 'playing';
+            score = 0;
+            obstaclesCleared = 0;
+            currentPointIndex = 0;
+            pointProgress = 0;
+            distanceTraveled = 0;
+            cameraY = 0;
+            
+            // Position ambulance at start
+            ambulance.x = roadPoints[0].x;
+            ambulance.rotation = 0;
+            ambulance.targetRotation = 0;
+            
+            // Show canvas and start game
+            document.getElementById('gameCanvas').style.display = 'block';
+            updateScore();
+            gameLoop();
+            
+            // Update current street
+            document.getElementById('currentStreet').textContent = roadPoints[0].streetName;
+        }
+    </script>
+</body>
+</html>
