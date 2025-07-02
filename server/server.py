@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from utils.neo4j_funcs import Neo4jController
-from utils.cars_licenses import sort_licenses, read_whole_csv
+from utils.cars_licenses import read_whole_csv, change_lanes
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
@@ -45,40 +45,10 @@ def read_whole_csv_endpoint():
 def change_lanes_endpoint(data: dict):
     num_lanes = data.get("num_lanes", 2)
     cars_data = data.get("cars_data", [])
+
+    processed_cars_data, driver_chosen = change_lanes(num_lanes, cars_data)
     
-    if not cars_data:
-        return {"error": "No cars data provided"}, 400
-        
-    best_driver = None
-    best_score = -1
-    
-    def backtrack(index):
-        nonlocal best_driver, best_score
-        
-        if index >= min(num_lanes, len(cars_data)):
-            return
-            
-        driver = cars_data[index]
-        score = driver.get("nivel de conduccion", 0)
-        
-        if score > best_score:
-            best_score = score
-            best_driver = {
-                "index": index,
-                "placa": driver["placa"],
-                "dueño": driver["dueño"],
-                "nivel de conduccion": score,
-                "lane": driver["lane"]
-            }
-        
-        backtrack(index + 1)
-    
-    backtrack(0)
-    
-    return {
-        "cars_in_front": cars_data[:num_lanes],
-        "driver_chosen": [best_driver] if best_driver else []
-    }
+    return {"cars_in_front": processed_cars_data, "driver_chosen": driver_chosen}
 
 @app.post("/find-similar-address")
 def find_similar_address_neo4j(data: dict):
