@@ -103,3 +103,58 @@ class DriverManager {
         return 'Poor';
     }
 }
+
+class EnhancedDriverDataManager extends DriverManager {
+    async loadDriverData(filePath = null) {
+        try {
+            console.log('Loading driver data from FastAPI endpoint...');
+            const response = await fetch('http://0.0.0.0:8082/whole-csv');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            this.drivers = await response.json();
+            this.isLoaded = true;
+
+            console.log(`✅ Loaded ${this.drivers.length} drivers from FastAPI endpoint`);
+            
+            // Log sample of loaded data for verification
+            if (this.drivers.length > 0) {
+                console.log('Sample driver data:', this.drivers[0]);
+                
+                // Verify data structure
+                const requiredFields = ['placa', 'dueño', 'nivel de conduccion'];
+                const sampleDriver = this.drivers[0];
+                const missingFields = requiredFields.filter(field => !(field in sampleDriver));
+                
+                if (missingFields.length > 0) {
+                    console.warn('⚠️ Missing required fields in driver data:', missingFields);
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Error loading driver data from API:', error);
+            console.log('🔄 Falling back to local data...');
+            this.createFallbackData();
+            return false;
+        }
+    }
+
+    createFallbackData() {
+        // Enhanced fallback data with more variety
+        this.drivers = [
+            { placa: 'ABC123', clase: 'Sedan', marca: 'Toyota', modelo: '2020', 'dueño': 'Juan Pérez', 'nivel de conduccion': 85 },
+            { placa: 'DEF456', clase: 'SUV', marca: 'Honda', modelo: '2019', 'dueño': 'María García', 'nivel de conduccion': 45 },
+            { placa: 'GHI789', clase: 'Hatchback', marca: 'Nissan', modelo: '2021', 'dueño': 'Carlos López', 'nivel de conduccion': 60 },
+            { placa: 'JKL012', clase: 'Truck', marca: 'Ford', modelo: '2018', 'dueño': 'Ana Silva', 'nivel de conduccion': 78 },
+            { placa: 'MNO345', clase: 'Bus', marca: 'Mercedes', modelo: '2017', 'dueño': 'Pedro Ruiz', 'nivel de conduccion': 92 },
+            { placa: 'PQR678', clase: 'Sedan', marca: 'Chevrolet', modelo: '2022', 'dueño': 'Carmen Vega', 'nivel de conduccion': 34 },
+            { placa: 'STU901', clase: 'SUV', marca: 'Hyundai', modelo: '2020', 'dueño': 'José Torres', 'nivel de conduccion': 67 },
+            { placa: 'VWX234', clase: 'Hatchback', marca: 'Kia', modelo: '2021', 'dueño': 'Laura Morales', 'nivel de conduccion': 89 }
+        ];
+        this.isLoaded = true;
+        console.log('📊 Using enhanced fallback driver data with 8 drivers');
+    }
+}
