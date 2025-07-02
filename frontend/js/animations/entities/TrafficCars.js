@@ -585,3 +585,51 @@ class TrafficVehicleWithDriver extends TrafficVehicle {
         super.dispose();
     }
 }
+
+class EnhancedTrafficVehicleWithDriver extends TrafficVehicleWithDriver {
+    constructor(scene, routePoints, options = {}, driverData = null) {
+        super(scene, routePoints, options, driverData);
+        
+        // Emergency lane change properties
+        this.isEmergencyLaneChange = false;
+        this.isReturningToTraffic = false;
+        this.emergencyLaneChangeProgress = 0;
+        this.originalLaneOffset = this.laneOffset;
+        this.emergencyTargetOffset = 0;
+        this.emergencySlowDown = false;
+        this.originalCurrentSpeed = this.currentSpeed;
+    }
+
+    update(deltaTime = 0.016, nearbyVehicles = []) {
+        // Handle emergency behaviors first
+        if (this.emergencySlowDown && !this.isEmergencyLaneChange) {
+            // Maintain slower speed during emergency situations
+            this.currentSpeed = Math.min(this.currentSpeed, this.baseSpeed * 0.3);
+        }
+
+        // Call parent update
+        super.update(deltaTime, nearbyVehicles);
+        
+        // Update emergency lane change visual indicators
+        if (this.isEmergencyLaneChange || this.isReturningToTraffic) {
+            this.updateEmergencyVisuals();
+        }
+    }
+
+    updateEmergencyVisuals() {
+        // Add visual indicators for emergency lane changes
+        if (this.taillights && this.taillights.length > 0) {
+            // Flash hazard lights during emergency maneuver
+            const flashRate = Date.now() * 0.01;
+            const intensity = 0.5 + 0.5 * Math.sin(flashRate);
+            
+            this.taillights.forEach(light => {
+                light.material.emissive.setScalar(intensity * 0.3);
+            });
+            
+            this.headlights.forEach(light => {
+                light.material.emissive.setScalar(intensity * 0.1);
+            });
+        }
+    }
+}

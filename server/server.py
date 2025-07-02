@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from utils.neo4j_funcs import Neo4jController
-from utils.cars_licenses import sort_licenses, change_lanes, read_whole_csv
+from utils.cars_licenses import sort_licenses, read_whole_csv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
@@ -44,16 +44,41 @@ def read_whole_csv_endpoint():
 @app.post("/change-lanes")
 def change_lanes_endpoint(data: dict):
     num_lanes = data.get("num_lanes", 2)
-    cars_in_front = sort_licenses(DATA_PATH)
-    driver_chosen = change_lanes(num_lanes, cars_in_front)
+    cars_data = data.get("cars_data", [])
     
-    list_cars_in_front = [cars_in_front[i] for i in range(num_lanes)]
-    list_driver_chosen = [{"index": driver_chosen[0], "placa": driver_chosen[1], "dueño": driver_chosen[2], "nivel de conduccion": driver_chosen[3]}]
-
-    if driver_chosen == -1:
-        return { "cars_in_front": list_cars_in_front, "driver_chosen": [] }
-
-    return { "cars_in_front": list_cars_in_front, "driver_chosen": list_driver_chosen }
+    if not cars_data:
+        return {"error": "No cars data provided"}, 400
+        
+    best_driver = None
+    best_score = -1
+    
+    def backtrack(index):
+        nonlocal best_driver, best_score
+        
+        if index >= min(num_lanes, len(cars_data)):
+            return
+            
+        driver = cars_data[index]
+        score = driver.get("nivel de conduccion", 0)
+        
+        if score > best_score:
+            best_score = score
+            best_driver = {
+                "index": index,
+                "placa": driver["placa"],
+                "dueño": driver["dueño"],
+                "nivel de conduccion": score,
+                "lane": driver["lane"]
+            }
+        
+        backtrack(index + 1)
+    
+    backtrack(0)
+    
+    return {
+        "cars_in_front": cars_data[:num_lanes],
+        "driver_chosen": [best_driver] if best_driver else []
+    }
 
 @app.post("/find-similar-address")
 def find_similar_address_neo4j(data: dict):

@@ -3,7 +3,7 @@ class TrafficManager {
         this.scene = scene;
         this.routePoints = routePoints;
         this.vehicles = [];
-        this.maxVehicles = 200; // Maximum vehicles on screen
+        this.maxVehicles = 100; // Maximum vehicles on screen
         this.spawnTimer = 0;
         this.spawnInterval = 1000; // Base spawn interval in milliseconds
         
@@ -388,5 +388,63 @@ class TrafficManagerWithDrivers extends TrafficManager {
         } while (Math.abs(segment - playerStartSegment) < avoidanceZone);
         
         this.spawnVehicle(segment, progress);
+    }
+}
+
+class TrafficManagerWithEnhancedDrivers extends TrafficManagerWithDrivers {
+    spawnVehicle(forceSegment = null, forceProgress = null) {
+        const type = this.selectVehicleType();
+        
+        // Get driver data
+        const driverData = this.driverDataManager.getRandomAvailableDriver();
+        
+        const options = {
+            type: type,
+            laneOffset: (Math.random() - 0.5) * 2.5
+        };
+        
+        // Create enhanced vehicle with emergency lane change capabilities
+        const vehicle = new EnhancedTrafficVehicleWithDriver(
+            this.scene, 
+            this.routePoints, 
+            options, 
+            driverData
+        );
+        
+        // If specific position is requested, override the random position
+        if (forceSegment !== null && forceProgress !== null) {
+            vehicle.currentSegment = forceSegment;
+            vehicle.progress = forceProgress;
+        }
+        
+        this.vehicles.push(vehicle);
+        
+        console.log(`Spawned ${type} driven by ${driverData['dueño']} (Level: ${driverData['nivel de conduccion']})`);
+        return vehicle;
+    }
+
+    spawnVehicleAtSegment(segment) {
+        const type = this.selectVehicleType();
+        
+        // Get driver data
+        const driverData = this.driverDataManager.getRandomAvailableDriver();
+        
+        const options = {
+            type: type,
+            laneOffset: (Math.random() - 0.5) * 2.5
+        };
+        
+        const vehicle = new EnhancedTrafficVehicleWithDriver(
+            this.scene, 
+            this.routePoints, 
+            options, 
+            driverData
+        );
+        
+        vehicle.currentSegment = segment;
+        vehicle.progress = Math.random();
+        
+        this.vehicles.push(vehicle);
+        console.log(`Spawned enhanced ${type} at segment ${segment} driven by ${driverData['dueño']}`);
     }
 }
