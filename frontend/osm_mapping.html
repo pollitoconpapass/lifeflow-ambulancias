@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="../imgs/lifeflow_favicon.png">
-    <title>Lifeflow - Ruta Optimizada</title>
+    <title>Lifeflow - Comparación de Rutas</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
@@ -221,6 +221,231 @@
             background: #3182ce;
             color: #000000;
         }
+        
+        /* Nuevos estilos para comparación de rutas */
+        .route-comparison-panel {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #4a5568;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .comparison-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .comparison-header h3 {
+            color: #3182ce;
+            margin: 0 0 10px 0;
+            font-size: 20px;
+        }
+        
+        .comparison-header p {
+            color: #9e9e9e;
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        .route-options {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .route-option {
+            flex: 1;
+            min-width: 300px;
+            background: #2d3748;
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .route-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .route-option.selected {
+            border-color: #3182ce;
+            background: #1a365d;
+            box-shadow: 0 0 20px rgba(49, 130, 206, 0.3);
+        }
+        
+        .route-option.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: #3182ce;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .route-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        
+        .route-icon {
+            font-size: 24px;
+        }
+        
+        .route-name {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .route-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+        }
+        
+        .route-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        
+        .route-stats .stat {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .route-stats .stat strong {
+            display: block;
+            color: #3182ce;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .route-stats .stat span {
+            color: #9e9e9e;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .comparison-actions {
+            text-align: center;
+            border-top: 1px solid #4a5568;
+            padding-top: 20px;
+        }
+        
+        .confirm-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .confirm-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+        }
+        
+        .confirm-btn:disabled {
+            background: #4a5568;
+            color: #9e9e9e;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Animaciones y efectos */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .route-comparison-panel {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .route-option {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .route-option:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+        
+        .route-option:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .route-options {
+                flex-direction: column;
+            }
+            
+            .route-option {
+                min-width: 100%;
+            }
+            
+            .route-stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .route-stats .stat {
+                text-align: left;
+            }
+        }
+        
+        /* Estilos para el botón de vista 3D */
+        #view3D {
+            background: linear-gradient(135deg, #805ad5 0%, #553c9a 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #view3D:hover {
+            background: linear-gradient(135deg, #553c9a 0%, #44337a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(128, 90, 213, 0.4);
+        }
+        
+        #view3D:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
     </style>
 </head>
 <body>
@@ -244,14 +469,12 @@
                 <div class="button-group">
                     <button onclick="goBack()" class="back-button">⬅️ Volver</button>
                     <button onclick="toggleEditMode()" class="edit-locations" id="editBtn">✏️ Editar Ubicaciones</button>
-                    <button onclick="calculateRoute()" id="calculateBtn">🧭 Calcular Ruta</button>
+                    <button onclick="calculateRoute()" id="calculateBtn">🧭 Calcular Rutas</button>
                 </div>
                 
-                <!-- Hidden input fields for your existing JS -->
                 <input type="hidden" id="startLocation" value="Jirón Andrés Vesalio 101, Lima">
                 <input type="hidden" id="endLocation" value="Avenida Arequipa 4545, Lima">
                 
-                <!-- Hidden edit form -->
                 <div id="editForm" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #4a5568;">
                     <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 200px;">
@@ -268,6 +491,10 @@
                         <button onclick="cancelEdit()" style="background: #666;">❌ Cancelar</button>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Comparacion rutas -->
+            <div id="routeComparison" class="route-comparison-panel" style="display: none;">
             </div>
             
             <div class="stats" id="routeStats" style="display: none;">
@@ -288,12 +515,14 @@
         
         <div id="map"></div>
 
-        <button id="view3D" class="btn btn-primary" style="margin: 10px;">
-            <i class="fas fa-cube"></i> Ver en 3D
-        </button>
+        <div style="padding: 20px; text-align: center;">
+            <button id="view3D" style="display: inline-flex;">
+                🎮 Ver Simulación 3D
+            </button>
+        </div>
         
         <div class="route-info" id="routeInfo" style="display: none;">
-            <h3 style="color: #ffffffe3;">📋 Instrucciones de Ruta</h3>
+            <h3 style="color: #ffffffe3;">📋 Instrucciones de Ruta Seleccionada</h3>
             <div id="routeSteps"></div>
         </div>
     </div>
@@ -304,7 +533,6 @@
     <script>
         // Navigation functions
         function goBack() {
-            // Navigate back to home.html
             window.location.href = "home.html";
         }
         
@@ -314,15 +542,12 @@
             const editBtn = document.getElementById('editBtn');
             
             if (editForm.style.display === 'none') {
-                // Show edit form
                 editForm.style.display = 'block';
                 editBtn.textContent = '❌ Cancelar Edición';
                 
-                // Populate current values
                 document.getElementById('editStart').value = document.getElementById('displayStart').textContent;
                 document.getElementById('editEnd').value = document.getElementById('displayEnd').textContent;
             } else {
-                // Hide edit form
                 editForm.style.display = 'none';
                 editBtn.textContent = '✏️ Editar Ubicaciones';
             }
@@ -337,19 +562,14 @@
                 return;
             }
             
-            // Update displayed locations
             document.getElementById('displayStart').textContent = newStart;
             document.getElementById('displayEnd').textContent = newEnd;
             
-            // Update the hidden inputs that your existing JS expects
             document.getElementById('startLocation').value = newStart;
             document.getElementById('endLocation').value = newEnd;
             
-            // Hide edit form
             toggleEditMode();
-            
-            // Clear existing route
-            clearRoute();
+            clearAllRoutes();
             
             showMessage('Ubicaciones actualizadas correctamente', 'success');
         }
@@ -358,25 +578,37 @@
             toggleEditMode();
         }
         
-        // Override the calculateRoute function to work with the new UI
+        // Enhanced calculateRoute function integration
         const originalCalculateRoute = window.calculateRoute;
         window.calculateRoute = function() {
-            // Update the hidden inputs with current displayed values
             const startLocation = document.getElementById('displayStart').textContent;
             const endLocation = document.getElementById('displayEnd').textContent;
             
             document.getElementById('startLocation').value = startLocation;
             document.getElementById('endLocation').value = endLocation;
             
-            // Call the original function
             if (originalCalculateRoute) {
                 originalCalculateRoute();
             }
         };
         
+        // Show/hide 3D view button based on route selection
+        function showView3DButton() {
+            const view3DBtn = document.getElementById('view3D');
+            view3DBtn.style.display = 'inline-flex';
+        }
+        
+        // Enhanced confirmRouteSelection to show 3D button
+        const originalConfirmRouteSelection = window.confirmRouteSelection;
+        window.confirmRouteSelection = function() {
+            if (originalConfirmRouteSelection) {
+                originalConfirmRouteSelection();
+                showView3DButton();
+            }
+        };
+        
         // Load locations from localStorage on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Load from localStorage (for real implementation)
             const startPoint = localStorage.getItem('startPoint');
             const destination = localStorage.getItem('destination');
             
@@ -389,9 +621,8 @@
                 document.getElementById('endLocation').value = destination;
             }
             
-            // Auto-calculate route if both locations are available
+            // Auto-calculate routes if both locations are available
             if (startPoint && destination) {
-                // Small delay to ensure map is fully loaded
                 setTimeout(() => {
                     calculateRoute();
                 }, 1000);
@@ -399,7 +630,7 @@
         });
     </script>
     
-    <!-- Include your existing JS file -->
+    <!-- Include the enhanced route comparison JS -->
     <script src="js/showRouteMap.js"></script>
 </body>
 </html>

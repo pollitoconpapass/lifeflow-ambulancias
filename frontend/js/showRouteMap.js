@@ -8,14 +8,40 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // Variables globales
-let currentRoute = null;
-let routeMarkers = [];
+let currentRoutes = {
+    bellman: null,
+    astar: null
+};
+let routeMarkers = {
+    bellman: [],
+    astar: []
+};
+let routeData = {
+    bellman: null,
+    astar: null
+};
+let selectedRoute = null; // 'bellman' or 'astar'
 
-// Función para calcular ruta usando la API
+// Configuración de colores para las rutas
+const routeConfig = {
+    bellman: {
+        color: '#3182ce',
+        name: 'Algoritmo Bellman-Ford',
+        icon: '🔵',
+        endpoint: 'http://0.0.0.0:8082/shortest-path'
+    },
+    astar: {
+        color: '#805ad5',
+        name: 'Algoritmo A*',
+        icon: '🟣',
+        endpoint: 'http://0.0.0.0:8082/shortest-path-astar'
+    }
+};
+
+// Función principal para calcular ambas rutas
 async function calculateRoute() {
     const startLocation = document.getElementById('startLocation').value.trim();
     const endLocation = document.getElementById('endLocation').value.trim();
-    const apiEndpoint = "http://0.0.0.0:8082/shortest-path";
     
     // Validar inputs
     if (!startLocation || !endLocation) {
@@ -23,82 +49,128 @@ async function calculateRoute() {
         return;
     }
     
-    if (!apiEndpoint) {
-        showMessage('Por favor ingresa la URL del endpoint de la API.', 'error');
-        return;
-    }
-    
     // Mostrar estado de carga
     const calculateBtn = document.getElementById('calculateBtn');
     const originalText = calculateBtn.textContent;
-    calculateBtn.textContent = '⏳ Calculando...';
+    calculateBtn.textContent = '⏳ Calculando rutas...';
     calculateBtn.disabled = true;
     
+    // Limpiar rutas existentes
+    clearAllRoutes();
+    
     try {
-        // Hacer petición a la API
-        const response = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                start_location: startLocation,
-                end_location: endLocation
-            })
-        });
+        // Calcular ambas rutas en paralelo
+        const [bellmanResult, astarResult] = await Promise.allSettled([
+            fetchRoute('bellman', startLocation, endLocation),
+            fetchRoute('astar', startLocation, endLocation)
+        ]);
         
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
+        let successCount = 0;
+        let errorMessages = [];
+        
+        // Procesar resultado de Bellman-Ford
+        if (bellmanResult.status === 'fulfilled') {
+            routeData.bellman = processApiRouteData(bellmanResult.value.routeData);
+            visualizeRoute('bellman', routeData.bellman, bellmanResult.value.totalTime);
+            successCount++;
+        } else {
+            errorMessages.push(`Bellman-Ford: ${bellmanResult.reason.message}`);
         }
         
-        const data = await response.json();
-        const routeData = data["ruta"];
-        const totalTime = data["tiempo_estimado"];
-        
-        if (!routeData || routeData.length === 0) {
-            throw new Error('No se encontró una ruta válida entre las ubicaciones especificadas.');
+        // Procesar resultado de A*
+        if (astarResult.status === 'fulfilled') {
+            routeData.astar = processApiRouteData(astarResult.value.routeData);
+            visualizeRoute('astar', routeData.astar, astarResult.value.totalTime);
+            successCount++;
+        } else {
+            errorMessages.push(`A*: ${astarResult.reason.message}`);
         }
         
-        // Procesar y visualizar la ruta
-        const processedRoute = processApiRouteData(routeData);
-        visualizeRoute(processedRoute, totalTime);
-
-        sessionStorage.setItem('routeData', JSON.stringify(processedRoute));
-        sessionStorage.setItem('originalRouteData', JSON.stringify(routeData));
-
-        const routeInfo = {
-            startLocation: startLocation,
-            endLocation: endLocation,
-            totalSteps: routeData.length,
-            timestamp: new Date().toISOString()
-        };
-        sessionStorage.setItem('routeInfo', JSON.stringify(routeInfo));
-        
-        document.getElementById('view3D').addEventListener('click', () => {
-            // Verificar que los datos estén guardados antes de navegar
-            const savedData = sessionStorage.getItem('routeData');
-            if (savedData) {
-                console.log('✅ Datos de ruta guardados correctamente');
-                console.log('🚀 Navegando a simulación 3D...');
-                window.location.href = './threejsAnimation.html';
-            } else {
-                console.error('❌ Error: No se pudieron guardar los datos de ruta');
-                alert('Error al preparar la simulación 3D. Por favor intenta de nuevo.');
+        if (successCount > 0) {
+            // Mostrar panel de comparación
+            showRouteComparison();
+            
+            // Ajustar vista del mapa para mostrar ambas rutas
+            adjustMapView();
+            
+            // Seleccionar automáticamente la primera ruta disponible
+            if (routeData.bellman) {
+                selectRoute('bellman');
+            } else if (routeData.astar) {
+                selectRoute('astar');
             }
-        });
-
-               
-        showMessage(`✅ Ruta calculada exitosamente! ${routeData.length} pasos encontrados.`, 'success');
-
+            
+            // Configurar botón de vista 3D inmediatamente después de calcular las rutas
+            const view3DBtn = document.getElementById('view3D');
+            if (view3DBtn) {
+                // Remover listeners anteriores
+                const newBtn = view3DBtn.cloneNode(true);
+                view3DBtn.parentNode.replaceChild(newBtn, view3DBtn);
+                
+                // Agregar nuevo listener
+                newBtn.addEventListener('click', () => {
+                    // Verificar que hay una ruta seleccionada
+                    if (!selectedRoute) {
+                        alert('Por favor selecciona una ruta primero antes de ver la simulación 3D.');
+                        return;
+                    }
+                    
+                    // Verificar que los datos estén guardados
+                    const savedData = sessionStorage.getItem('routeData');
+                    if (savedData) {
+                        console.log('✅ Datos de ruta guardados correctamente');
+                        console.log('🚀 Navegando a simulación 3D...');
+                        window.location.href = './threejsAnimation.html';
+                    } else {
+                        console.error('❌ Error: No se pudieron guardar los datos de ruta');
+                        alert('Error al preparar la simulación 3D. Por favor intenta de nuevo.');
+                    }
+                });
+            }
+            
+            showMessage(`✅ ${successCount} ruta(s) calculada(s) exitosamente!`, 'success');
+        } else {
+            showMessage(`❌ Error al calcular las rutas: ${errorMessages.join(', ')}`, 'error');
+        }
         
     } catch (error) {
-        console.error('Error al calcular la ruta:', error);
-        showMessage(`❌ Error al calcular la ruta: ${error.message}`, 'error');
+        console.error('Error general al calcular rutas:', error);
+        showMessage(`❌ Error general: ${error.message}`, 'error');
     } finally {
         // Restaurar botón
         calculateBtn.textContent = originalText;
         calculateBtn.disabled = false;
     }
+}
+
+// Función para obtener datos de una ruta específica
+async function fetchRoute(routeType, startLocation, endLocation) {
+    const endpoint = routeConfig[routeType].endpoint;
+    
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            start_location: startLocation,
+            end_location: endLocation
+        })
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const routeData = data["ruta"];
+    const totalTime = data["tiempo_estimado"];
+    
+    if (!routeData || routeData.length === 0) {
+        throw new Error('No se encontró una ruta válida entre las ubicaciones especificadas.');
+    }
+    
+    return { routeData, totalTime };
 }
 
 // Función para procesar datos de la API
@@ -114,115 +186,228 @@ function processApiRouteData(apiData) {
         velocidadMaxima_kmh: step.velocidadMaxima_kmh,
         instruccion: step.instruccion,
         osmid: step.OSMID,
-        // Convertir coordenadas de la API al formato de Leaflet [lat, lng]
         fromCoords: [step.fromLat, step.fromLng],
         toCoords: [step.toLat, step.toLng]
     }));
 }
 
-// Función para mostrar mensajes
-function showMessage(message, type = 'info') {
-    // Remover mensajes anteriores
-    const existingMessages = document.querySelectorAll('.error-message, .success-message');
-    existingMessages.forEach(msg => msg.remove());
-    
-    // Crear nuevo mensaje
-    const messageDiv = document.createElement('div');
-    messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-    messageDiv.textContent = message;
-    
-    // Insertar después de los controles
-    const controls = document.querySelector('.controls');
-    controls.appendChild(messageDiv);
-    
-    // Auto-remover después de 5 segundos
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.remove();
-        }
-    }, 5000);
-}
-
-// Función para obtener color según tipo de calle
-function getRoadColor(highway) {
-    const colors = {
-        'residential': '#3498db',
-        'primary': '#e74c3c',
-        'secondary': '#f39c12',
-        'tertiary': '#27ae60',
-        'trunk': '#9b59b6'
-    };
-    return colors[highway] || '#95a5a6';
-}
-
-// Función para cargar y visualizar ruta
-function visualizeRoute(routeData, totalTime) {
-    clearRoute();
-    
+// Función para visualizar una ruta específica
+function visualizeRoute(routeType, routeData, totalTime) {
     if (!routeData || routeData.length === 0) return;
     
+    const config = routeConfig[routeType];
     const coordinates = [];
-    const steps = [];
-    let totalDistance = 0;
     
-    // Procesar datos de ruta con coordenadas reales de Neo4j
+    // Procesar coordenadas
     routeData.forEach((step, index) => {
-        // Las coordenadas vienen directamente de Neo4j
-        const fromCoords = step.fromCoords;
-        const toCoords = step.toCoords;
-        
         if (index === 0) {
-            coordinates.push(fromCoords);
+            coordinates.push(step.fromCoords);
         }
-        coordinates.push(toCoords);
-        
-        totalDistance += step.distancia_metros;
-        steps.push(step);
+        coordinates.push(step.toCoords);
     });
     
     // Crear polilínea de la ruta
-    currentRoute = L.polyline(coordinates, {
-        color: '#3182ce',
-        weight: 6,
-        opacity: 0.8,
+    const routeStyle = {
+        color: config.color,
+        weight: 5,
+        opacity: 0.7,
         smoothFactor: 1
-    }).addTo(map);
+    };
     
-    // Agregar marcadores de inicio y fin
-    const startMarker = L.marker(coordinates[0], {
-        icon: L.divIcon({
-            html: '👇',
-            iconSize: [30, 30],
-            className: 'start-marker'
-        })
-    }).addTo(map).bindPopup(`<b>Inicio:</b><br>${routeData[0].desde}`);
+    currentRoutes[routeType] = L.polyline(coordinates, routeStyle).addTo(map);
     
-    const endMarker = L.marker(coordinates[coordinates.length - 1], {
-        icon: L.divIcon({
-            html: '💎',
-            iconSize: [30, 30],
-            className: 'end-marker'
-        })
-    }).addTo(map).bindPopup(`<b>Destino:</b><br>${routeData[routeData.length - 1].hasta}`);
+    // Agregar marcadores solo para la primera ruta calculada
+    if (Object.keys(currentRoutes).filter(key => currentRoutes[key]).length === 1) {
+        const startMarker = L.marker(coordinates[0], {
+            icon: L.divIcon({
+                html: '🚩',
+                iconSize: [30, 30],
+                className: 'start-marker'
+            })
+        }).addTo(map).bindPopup(`<b>Inicio:</b><br>${routeData[0].desde}`);
+        
+        const endMarker = L.marker(coordinates[coordinates.length - 1], {
+            icon: L.divIcon({
+                html: '🏁',
+                iconSize: [30, 30],
+                className: 'end-marker'
+            })
+        }).addTo(map).bindPopup(`<b>Destino:</b><br>${routeData[routeData.length - 1].hasta}`);
+        
+        routeMarkers[routeType].push(startMarker, endMarker);
+    }
     
-    routeMarkers.push(startMarker, endMarker);
-    
-    // Ajustar vista del mapa a la ruta
-    map.fitBounds(currentRoute.getBounds(), { padding: [20, 20] });
-    
-    // Mostrar estadísticas
-    updateStats(totalDistance, steps.length, totalTime);
-    
-    // Mostrar instrucciones
-    displayRouteInstructions(steps);
+    // Almacenar tiempo estimado
+    currentRoutes[routeType].estimatedTime = totalTime;
 }
 
-// Función para actualizar estadísticas
-function updateStats(distance, stepCount, totalTime) {
-    document.getElementById('totalDistance').textContent = Math.round(distance);
-    document.getElementById('totalSteps').textContent = stepCount;
-    document.getElementById('estimatedTime').textContent = totalTime;
+// Función para mostrar el panel de comparación de rutas
+function showRouteComparison() {
+    // Crear o actualizar el panel de comparación
+    let comparisonPanel = document.getElementById('routeComparison');
+    if (!comparisonPanel) {
+        comparisonPanel = document.createElement('div');
+        comparisonPanel.id = 'routeComparison';
+        comparisonPanel.className = 'route-comparison-panel';
+        
+        // Insertar después de los controles
+        const controls = document.querySelector('.controls');
+        controls.appendChild(comparisonPanel);
+    }
+    
+    let panelHTML = `
+        <div class="comparison-header">
+            <h3>🔄 Comparación de Rutas</h3>
+            <p>Selecciona la ruta que prefieres usar:</p>
+        </div>
+        <div class="route-options">
+    `;
+    
+    // Agregar opciones de ruta disponibles
+    Object.keys(routeConfig).forEach(routeType => {
+        if (routeData[routeType]) {
+            const config = routeConfig[routeType];
+            const totalDistance = routeData[routeType].reduce((sum, step) => sum + step.distancia_metros, 0);
+            const totalSteps = routeData[routeType].length;
+            const estimatedTime = currentRoutes[routeType].estimatedTime;
+            
+            panelHTML += `
+                <div class="route-option ${selectedRoute === routeType ? 'selected' : ''}" 
+                     onclick="selectRoute('${routeType}')" 
+                     data-route="${routeType}">
+                    <div class="route-header">
+                        <span class="route-icon">${config.icon}</span>
+                        <span class="route-name">${config.name}</span>
+                        <div class="route-indicator" style="background-color: ${config.color}"></div>
+                    </div>
+                    <div class="route-stats">
+                        <div class="stat">
+                            <strong>${Math.round(totalDistance / 1000 * 100) / 100} km</strong>
+                            <span>Distancia</span>
+                        </div>
+                        <div class="stat">
+                            <strong>${totalSteps}</strong>
+                            <span>Pasos</span>
+                        </div>
+                        <div class="stat">
+                            <strong>${estimatedTime} min</strong>
+                            <span>Tiempo</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    panelHTML += `
+        </div>
+        <div class="comparison-actions">
+            <button onclick="confirmRouteSelection()" class="confirm-btn" ${!selectedRoute ? 'disabled' : ''}>
+                ✅ Usar Ruta Seleccionada
+            </button>
+        </div>
+    `;
+    
+    comparisonPanel.innerHTML = panelHTML;
+    comparisonPanel.style.display = 'block';
+}
+
+// Función para seleccionar una ruta
+function selectRoute(routeType) {
+    selectedRoute = routeType;
+    
+    // Guardar inmediatamente la ruta seleccionada para el 3D
+    const selectedRouteData = routeData[routeType];
+    sessionStorage.setItem('routeData', JSON.stringify(selectedRouteData));
+    sessionStorage.setItem('selectedRouteType', routeType);
+    
+    // Guardar información adicional
+    const routeInfo = {
+        startLocation: document.getElementById('startLocation').value,
+        endLocation: document.getElementById('endLocation').value,
+        routeType: routeType,
+        totalSteps: selectedRouteData.length,
+        timestamp: new Date().toISOString()
+    };
+    sessionStorage.setItem('routeInfo', JSON.stringify(routeInfo));
+    
+    // Actualizar estilos visuales de las rutas
+    Object.keys(currentRoutes).forEach(type => {
+        if (currentRoutes[type]) {
+            const isSelected = type === routeType;
+            currentRoutes[type].setStyle({
+                color: routeConfig[type].color,
+                weight: isSelected ? 7 : 4,
+                opacity: isSelected ? 0.9 : 0.5
+            });
+        }
+    });
+    
+    // Actualizar UI de selección
+    document.querySelectorAll('.route-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    const selectedOption = document.querySelector(`[data-route="${routeType}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
+    }
+    
+    // Habilitar botón de confirmación
+    const confirmBtn = document.querySelector('.confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+    }
+    
+    // Actualizar estadísticas principales
+    updateMainStats(routeType);
+    
+    // Mostrar instrucciones de la ruta seleccionada
+    displayRouteInstructions(routeData[routeType]);
+}
+
+// Función para confirmar la selección de ruta
+function confirmRouteSelection() {
+    if (!selectedRoute) {
+        showMessage('Por favor selecciona una ruta primero.', 'error');
+        return;
+    }
+    
+    showMessage(`✅ Ruta ${routeConfig[selectedRoute].name} confirmada y lista para usar!`, 'success');
+    
+    // Ocultar panel de comparación
+    const comparisonPanel = document.getElementById('routeComparison');
+    if (comparisonPanel) {
+        comparisonPanel.style.display = 'none';
+    }
+}
+
+// Función para actualizar estadísticas principales
+function updateMainStats(routeType) {
+    const data = routeData[routeType];
+    const totalDistance = data.reduce((sum, step) => sum + step.distancia_metros, 0);
+    const estimatedTime = currentRoutes[routeType].estimatedTime;
+    
+    document.getElementById('totalDistance').textContent = Math.round(totalDistance / 1000 * 100) / 100;
+    document.getElementById('totalSteps').textContent = data.length;
+    document.getElementById('estimatedTime').textContent = estimatedTime;
     document.getElementById('routeStats').style.display = 'flex';
+}
+
+// Función para ajustar la vista del mapa
+function adjustMapView() {
+    const allCoordinates = [];
+    
+    Object.keys(currentRoutes).forEach(routeType => {
+        if (currentRoutes[routeType]) {
+            allCoordinates.push(...currentRoutes[routeType].getLatLngs());
+        }
+    });
+    
+    if (allCoordinates.length > 0) {
+        const group = new L.featureGroup(Object.values(currentRoutes).filter(route => route));
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+    }
 }
 
 // Función para mostrar instrucciones de ruta
@@ -256,42 +441,56 @@ function displayRouteInstructions(steps) {
     document.getElementById('routeInfo').style.display = 'block';
 }
 
-// Función para limpiar ruta
-function clearRoute() {
-    if (currentRoute) {
-        map.removeLayer(currentRoute);
-        currentRoute = null;
-    }
+// Función para limpiar todas las rutas
+function clearAllRoutes() {
+    Object.keys(currentRoutes).forEach(routeType => {
+        if (currentRoutes[routeType]) {
+            map.removeLayer(currentRoutes[routeType]);
+            currentRoutes[routeType] = null;
+        }
+        
+        routeMarkers[routeType].forEach(marker => map.removeLayer(marker));
+        routeMarkers[routeType] = [];
+    });
     
-    routeMarkers.forEach(marker => map.removeLayer(marker));
-    routeMarkers = [];
+    routeData.bellman = null;
+    routeData.astar = null;
+    selectedRoute = null;
     
     document.getElementById('routeStats').style.display = 'none';
     document.getElementById('routeInfo').style.display = 'none';
+    
+    const comparisonPanel = document.getElementById('routeComparison');
+    if (comparisonPanel) {
+        comparisonPanel.style.display = 'none';
+    }
 }
 
-// Función para procesar datos de Neo4j (para tu uso)
-function processNeo4jRouteData(neo4jResults) {
-    return neo4jResults.map(record => ({
-        paso: record.paso,
-        desde: record.desde,
-        hasta: record.hasta,
-        nombreCalle: record.nombreCalle,
-        tipoCalle: record.tipoCalle,
-        unidireccional: record.unidireccional,
-        distancia_metros: record.distancia_metros,
-        velocidadMaxima_kmh: record.velocidadMaxima_kmh,
-        instruccion: record.instruccion,
-        osmid: record.OSMID
-    }));
+// Función para mostrar mensajes (mantener la original)
+function showMessage(message, type = 'info') {
+    const existingMessages = document.querySelectorAll('.error-message, .success-message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+    messageDiv.textContent = message;
+    
+    const controls = document.querySelector('.controls');
+    controls.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
+    }, 5000);
 }
 
-// Evento para manejar clicks en el mapa (opcional)
-map.on('click', function(e) {
-    console.log('Coordenadas:', e.latlng.lat, e.latlng.lng);
-});
+// Función para limpiar ruta (mantener compatibilidad)
+function clearRoute() {
+    clearAllRoutes();
+}
 
-// Eventos para manejar Enter en los campos de input
+// Eventos del DOM
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('startLocation').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -305,6 +504,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Asignar el manejador de eventos al botón de calcular ruta
     document.getElementById('calculateBtn').addEventListener('click', calculateRoute);
+});
+
+// Evento para manejar clicks en el mapa
+map.on('click', function(e) {
+    console.log('Coordenadas:', e.latlng.lat, e.latlng.lng);
 });
