@@ -1,7 +1,7 @@
-# Lifeflow: Sistema de rutas eficientes para ambulancias 🚑
+# Lifeflow: Simulación 3D para optimizar rutas de ambulancias 🚑
 
 ## 🎯 Objetivo
-El objetivo de esta propuesta es diseñar e implementar un sistema inteligente de optimización dinámica de rutas para ambulancias en Lima Centro, con el fin de minimizar el tiempo de respuesta ante emergencias médicas. LifeFlow buscará ofrecer rutas alternativas eficientes en función de la red vial y el estado dinámico de la ciudad, reduciendo así los riesgos de complicaciones médicas por demoras en la atención, y promoviendo un uso más efectivo de los recursos sanitarios.
+El objetivo de esta propuesta es diseñar e implementar un videojuego 3D que simule un sistema inteligente de optimización dinámica de rutas para ambulancias en Lima Centro. El juego, llamado LifeFlow, tiene como fin minimizar el tiempo de respuesta ante emergencias médicas mediante la representación de rutas alternativas eficientes. Estas rutas se determinarán utilizando el algoritmo Bellman-Ford y comparandolo con los resultados obtenidos con el algoritmo A* para analizar la red vial y el estado dinámico de la ciudad, reduciendo así los riesgos de complicaciones médicas por demoras en la atención y promoviendo un uso más efectivo de los recursos sanitarios.
 
 
 ## 📊 Preprocesamiento
@@ -33,21 +33,25 @@ Estara corriendo en `http://0.0.0.0:8082`
 
 ### Endpoints
 - `GET /change-lanes` : Sortea los conductores en frente y elige el de mejor nivel conduccion
-- `POST /shortest-path`: Brinda la ruta mas corta utilizando el algoritmo A*, con detalles
-- `POST /shortest-path-roads`: Brinda la ruta mas corta utilizando el algoritmo A*, detallando solo el nombre de las calles por la cual navegar
+- `POST /shortest-path`: Brinda la ruta mas corta utilizando el algoritmo Bellman-Ford, con detalles
+- `POST /shortest-path-astar`: Brinda la ruta mas corta utilizando el algoritmo A*, con detalles
+- `POST /shortest-path-roads`: Brinda la ruta mas corta utilizando el algoritmo Bellman-Ford, detallando solo el nombre de las calles por la cual navegar
 - `GET /find-similar-address`: Busca direcciones similares a la proporcionada
 
 
 ## 🌺 Frontend
-### Leaflet para mostrar la ruta en el mapa
+### Leaflet para mostrar las rutas en el mapa
 ![alt text](imgs/leaflet_route.png)
 
 ### Three JS para realizar la animación de la ruta y dinamica del proyecto
-Preview
 ![alt text](./imgs/threeJspreview.png)
 
+### Backtracking para seleccionar al conductor con mejor nivel de conduccion
+![alt text](./imgs/backtracking_demo.png)
+
 ## Algoritmos Utilizados (Vistos en clase)
-- A*: Para obtener el camino mas corto
+- A*: Para obtener el camino mas corto 
+- Bellman-Ford: Para obtener el camino mas corto (comparamos ambas rutas)
 - Backtracking: Para seleccionar al conductor con mejor nivel de conduccion
 - Divide y Vencerás: Para buscar direcciones similares a la proporcionada dentro de la base de datos
 - Hash Map: Para mapear las direcciones de los hospitales, el nombre del hospital con su respectiva direccion
